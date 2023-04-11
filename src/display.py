@@ -6,8 +6,9 @@ from itertools import cycle
 
 import pygame as pg
 
+from board import Board, Square
 from constants import (
-    WIDTH, RANKS, FILES, DARK_SQUARE_COLOUR, LIGHT_SQUARE_COLOUR)
+    WIDTH, RANKS, FILES, DARK_SQUARE_COLOUR, LIGHT_SQUARE_COLOUR, PIECE_WIDTH)
 
 
 class DisplayBoard:
@@ -20,6 +21,7 @@ class DisplayBoard:
         self.min_x = (WIDTH - square_width * FILES) // 2
         self.min_y = min_y
         self.square_width = square_width
+        self.board = Board()
 
         self.squares = []
         for rank in range(RANKS - 1, -1, -1):
@@ -36,10 +38,13 @@ class DisplayBoard:
         Displays all squares on the chess board.
         Reverse to face the side of black instead of white.
         """
-        squares = self.squares if not reverse else reversed(self.squares)
-        for rank in squares:
+        for rank in self.squares:
             for square in rank:
-                square.display()  
+                square.display(reverse)
+    
+    def get_square(self, file: int, rank: int) -> Square:
+        """Gets the internal square based on the file and rank."""
+        return self.board.board[RANKS - 1 - rank][file]
 
 
 class DisplaySquare(pg.Rect):
@@ -50,13 +55,34 @@ class DisplaySquare(pg.Rect):
     ) -> None:
         self.board = board
         self.colour = colour
+        self.file = file
+        self.rank = rank
         # Square: width = height.
-        width = height = self.board.square_width
-        left = self.board.min_x + width * file
+        self.width = self.height = self.board.square_width
+        self.normal_left = self.board.min_x + self.width * self.file
         # Remember, top rank is rank 7 internally.
-        top = self.board.min_y + height * (RANKS - 1 - rank)
-        super().__init__(left, top, width, height)
+        self.normal_top = (
+            self.board.min_y + self.height * (RANKS - 1 - self.rank))
+        # Swapped around display.
+        self.reverse_left = (
+            self.board.min_x + self.width * (FILES - 1 - self.file))
+        self.reverse_top = (
+            self.board.min_y + self.height * self.rank)
+        super().__init__(
+            self.normal_left, self.normal_top, self.width, self.height)
 
-    def display(self) -> None:
+    def display(self, reverse: bool) -> None:
         """Displays the square."""
+        if not reverse:
+            self.left = self.normal_left
+            self.top = self.normal_top
+        else:
+            self.left = self.reverse_left
+            self.top = self.reverse_top
         pg.draw.rect(self.board.window, self.colour, self)
+        square = self.board.get_square(self.file, self.rank)
+        if square.piece is not None:
+            coordinate = (
+                self.left + (self.width - PIECE_WIDTH) // 2,
+                self.top + (self.height - PIECE_WIDTH) // 2)
+            self.board.window.blit(square.piece.image, coordinate)
