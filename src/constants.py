@@ -17,6 +17,7 @@ SQUARE_WIDTH = 60
 DARK_SQUARE_COLOUR = "#736231"
 LIGHT_SQUARE_COLOUR = "#e6ddc3"
 PIECE_WIDTH = 55
+SELECTED_SQUARE_COLOUR = "#03a9fc"
 
 # Directories.
 PIECES_DIR = pathlib.Path(__file__).parent.parent / "pieces"

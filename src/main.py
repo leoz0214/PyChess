@@ -22,9 +22,15 @@ class Game:
             self.clock.tick(FPS)
             events = pg.event.get()
             for event in events:
-                if event.type == pg.QUIT:
-                    pg.quit()
-                    sys.exit(0)
+                match event.type:
+                    case pg.QUIT:
+                        pg.quit()
+                        sys.exit(0)
+                    case pg.MOUSEBUTTONDOWN:
+                        # Accept left click (1) or right click (3).
+                        if event.button in (1, 3):
+                            coordinate = pg.mouse.get_pos()
+                            board.handle_click(coordinate)
             board.display()
             pg.display.update()
 

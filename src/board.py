@@ -14,16 +14,30 @@ class Board:
     def __init__(self) -> None:
         back_rank = (Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook)
         self.board = [
-            [Square(piece(Colour.BLACK)) for piece in back_rank],
-            [Square(Pawn(Colour.BLACK)) for _ in range(FILES)],
-            *[[Square() for _ in range(FILES)] for _ in range(4)],
-            [Square(Pawn(Colour.WHITE)) for _ in range(FILES)],
-            [Square(piece(Colour.WHITE)) for piece in back_rank]
+            [
+                Square(file, 7, piece(Colour.BLACK))
+                for file, piece in enumerate(back_rank)],
+            [Square(file, 6, Pawn(Colour.BLACK)) for file in range(FILES)],
+            *[
+                [Square(file, rank) for file in range(FILES)]
+                for rank in range(5, 1, -1)],
+            [Square(file, 1, Pawn(Colour.WHITE)) for file in range(FILES)],
+            [
+                Square(file, 0, piece(Colour.WHITE))
+                for file, piece in enumerate(back_rank)]
         ]
+        self.turn = Colour.WHITE
 
 
 class Square:
     """Internal Chess square representation."""
 
-    def __init__(self, piece: Piece | None = None) -> None:
+    def __init__(
+        self, file: int, rank: int, piece: Piece | None = None
+    ) -> None:
+        self.file = file
+        self.rank = rank
         self.piece = piece
+    
+    def __eq__(self, square: "Square") -> bool:
+        return isinstance(square, Square) and self.__dict__ == square.__dict__

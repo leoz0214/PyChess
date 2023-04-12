@@ -8,7 +8,8 @@ import pygame as pg
 
 from board import Board, Square
 from constants import (
-    WIDTH, RANKS, FILES, DARK_SQUARE_COLOUR, LIGHT_SQUARE_COLOUR, PIECE_WIDTH)
+    WIDTH, RANKS, FILES, DARK_SQUARE_COLOUR, LIGHT_SQUARE_COLOUR, PIECE_WIDTH,
+    SELECTED_SQUARE_COLOUR)
 
 
 class DisplayBoard:
@@ -20,6 +21,8 @@ class DisplayBoard:
         self.window = window
         self.min_x = (WIDTH - square_width * FILES) // 2
         self.min_y = min_y
+        self.max_x = self.min_x + square_width * FILES
+        self.max_y = self.min_y + square_width * RANKS
         self.square_width = square_width
         self.board = Board()
 
@@ -32,12 +35,16 @@ class DisplayBoard:
                 [
                     DisplaySquare(self, colour, file, rank)
                     for colour, file in zip(colour_cycle, range(FILES))])
+        
+        self.selected_square = None
     
-    def display(self, reverse: bool = False) -> None:
+    def display(self) -> None:
         """
         Displays all squares on the chess board.
         Reverse to face the side of black instead of white.
         """
+        # White = 0, Black = 1.
+        reverse = self.board.turn.value
         for rank in self.squares:
             for square in rank:
                 square.display(reverse)
@@ -45,6 +52,32 @@ class DisplayBoard:
     def get_square(self, file: int, rank: int) -> Square:
         """Gets the internal square based on the file and rank."""
         return self.board.board[RANKS - 1 - rank][file]
+    
+    def handle_click(self, coordinates: tuple[int, int]) -> None:
+        """Handles a mouse click."""
+        x, y = coordinates
+        if not (
+            self.min_x <= x <= self.max_x and self.min_y <= y <= self.max_y
+        ):
+            # Board not clicked.
+            return
+        reverse = self.board.turn.value
+        file = (x - self.min_x) // self.square_width
+        rank = FILES - 1 - (y - self.min_y) // self.square_width
+        if reverse:
+            # File and rank are reversed (inverted board).
+            file = FILES - 1 - file
+            rank = RANKS - 1 - rank
+        selected_square = self.get_square(file, rank)
+        if selected_square == self.selected_square:
+            # Deselect the currently selected square and exit.
+            self.selected_square = None
+            return
+        if (
+            selected_square.piece is not None
+            and selected_square.piece.colour == self.board.turn
+        ):
+            self.selected_square = selected_square
 
 
 class DisplaySquare(pg.Rect):
@@ -79,7 +112,16 @@ class DisplaySquare(pg.Rect):
         else:
             self.left = self.reverse_left
             self.top = self.reverse_top
-        pg.draw.rect(self.board.window, self.colour, self)
+        if (
+            self.board.selected_square is not None
+            and self.board.selected_square.file == self.file
+            and self.board.selected_square.rank == self.rank
+        ):
+            # Square selected.
+            colour = SELECTED_SQUARE_COLOUR
+        else:
+            colour = self.colour
+        pg.draw.rect(self.board.window, colour, self)
         square = self.board.get_square(self.file, self.rank)
         if square.piece is not None:
             coordinate = (

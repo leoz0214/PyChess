@@ -26,6 +26,9 @@ class Piece:
     def __init__(self, colour: Colour, image: pg.Surface) -> None:
         self.colour = colour
         self.image = image
+    
+    def __eq__(self, piece: "Piece") -> bool:
+        return type(self) is type(piece) and self.__dict__ == piece.__dict__
 
 
 class Pawn(Piece):
