@@ -9,8 +9,8 @@ TITLE = "PyChess"
 FPS = 30
 
 # General chess board information.
-RANKS = 8 # rows
-FILES = 8 # columns
+RANKS = 8 # rows on a chess board.
+FILES = 8 # columns on a chess board.
 
 # Chess board and piece configuration for this program.
 SQUARE_WIDTH = 60
@@ -18,6 +18,8 @@ DARK_SQUARE_COLOUR = "#736231"
 LIGHT_SQUARE_COLOUR = "#e6ddc3"
 PIECE_WIDTH = 55
 SELECTED_SQUARE_COLOUR = "#03a9fc"
+POSSIBLE_MOVE_CIRCLE_WIDTH = 10
+POSSIBLE_MOVE_CIRCLE_COLOUR = "#888888"
 
 # Directories.
 PIECES_DIR = pathlib.Path(__file__).parent.parent / "pieces"

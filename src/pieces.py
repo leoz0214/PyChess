@@ -23,9 +23,10 @@ def load_piece_image(colour: Colour, piece: Pieces) -> pg.Surface:
 class Piece:
     """Parent class for the various chess pieces."""
 
-    def __init__(self, colour: Colour, image: pg.Surface) -> None:
+    def __init__(self, colour: Colour, piece: pg.Surface) -> None:
         self.colour = colour
-        self.image = image
+        self.type = piece
+        self.image = load_piece_image(self.colour, self.type)
     
     def __eq__(self, piece: "Piece") -> bool:
         return type(self) is type(piece) and self.__dict__ == piece.__dict__
@@ -35,39 +36,39 @@ class Pawn(Piece):
     """Represents a pawn (1 point value)."""
 
     def __init__(self, colour: Colour) -> None:
-        super().__init__(colour, load_piece_image(colour, Pieces.PAWN))
+        super().__init__(colour, Pieces.PAWN)
 
 
 class Knight(Piece):
     """Represents a knight (3 points value)."""
 
     def __init__(self, colour: Colour) -> None:
-        super().__init__(colour, load_piece_image(colour, Pieces.KNIGHT))
+        super().__init__(colour, Pieces.KNIGHT)
 
 
 class Bishop(Piece):
     """Represents a bishop (3 points value)."""
 
     def __init__(self, colour: Colour) -> None:
-        super().__init__(colour, load_piece_image(colour, Pieces.BISHOP))
+        super().__init__(colour, Pieces.BISHOP)
 
 
 class Rook(Piece):
     """Represents a rook (5 points value)."""
 
     def __init__(self, colour: Colour) -> None:
-        super().__init__(colour, load_piece_image(colour, Pieces.ROOK))
+        super().__init__(colour, Pieces.ROOK)
 
 
 class Queen(Piece):
     """Represents a queen (9 points value)."""
 
     def __init__(self, colour: Colour) -> None:
-        super().__init__(colour, load_piece_image(colour, Pieces.QUEEN))
+        super().__init__(colour, Pieces.QUEEN)
 
 
 class King(Piece):
     """Represents a king (utmost importance)."""
 
     def __init__(self, colour: Colour) -> None:
-        super().__init__(colour, load_piece_image(colour, Pieces.KING))
+        super().__init__(colour, Pieces.KING)
