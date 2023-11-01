@@ -21,6 +21,9 @@ SELECTED_SQUARE_COLOUR = "#03a9fc"
 POSSIBLE_MOVE_CIRCLE_WIDTH = 10
 POSSIBLE_MOVE_CIRCLE_COLOUR = "#888888"
 
+# Configuration
+REVERSE_BOARD = False
+
 # Directories.
 PIECES_DIR = pathlib.Path(__file__).parent.parent / "pieces"
 WHITE_PIECES_DIR = PIECES_DIR / "white"

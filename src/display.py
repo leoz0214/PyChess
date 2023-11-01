@@ -10,7 +10,7 @@ from board import Board, Square
 from constants import (
     WIDTH, RANKS, FILES, DARK_SQUARE_COLOUR, LIGHT_SQUARE_COLOUR, PIECE_WIDTH,
     SELECTED_SQUARE_COLOUR, POSSIBLE_MOVE_CIRCLE_WIDTH,
-    POSSIBLE_MOVE_CIRCLE_COLOUR)
+    POSSIBLE_MOVE_CIRCLE_COLOUR, REVERSE_BOARD)
 from utils import Colour, Pieces
 
 
@@ -40,17 +40,21 @@ class DisplayBoard:
         
         self.selected_square = None
         self.possible_moves = []
+
+    @property
+    def in_reverse(self) -> bool:
+        """Board display is inverted."""
+        # White = 0, Black = 1.
+        return REVERSE_BOARD and self.board.turn.value
     
     def display(self) -> None:
         """
         Displays all squares on the chess board.
-        Reverse to face the side of black instead of white.
+        Reverse to face the side of black instead of white (if active).
         """
-        # White = 0, Black = 1.
-        reverse = self.board.turn.value
         for rank in self.squares:
             for square in rank:
-                square.display(reverse)
+                square.display(self.in_reverse)
     
     def handle_click(self, coordinates: tuple[int, int]) -> None:
         """Handles a mouse click."""
@@ -60,15 +64,18 @@ class DisplayBoard:
         ):
             # Board not clicked.
             return
-        reverse = self.board.turn.value
         file = (x - self.min_x) // self.square_width
         rank = FILES - 1 - (y - self.min_y) // self.square_width
-        if reverse:
+        if self.in_reverse:
             # File and rank are reversed (inverted board).
             file = FILES - 1 - file
             rank = RANKS - 1 - rank
-        selected_square = self.board.get(file, rank)
-        if selected_square == self.selected_square:
+        try:
+            selected_square = self.board.get(file, rank)
+        except IndexError:
+            # Edge case - board not clicked after all.
+            return
+        if selected_square is self.selected_square:
             # Deselect the currently selected square and exit.
             self.selected_square = None
             self.possible_moves.clear()
@@ -88,12 +95,15 @@ class DisplayBoard:
         """Sets the possible moves based on the selected square."""
         square = self.selected_square
         piece = square.piece
-        match piece.type:
-            case Pieces.PAWN:
-                self.possible_moves = (
-                    self.board.get_pawn_moves(square, piece.colour))
-            case Pieces.BISHOP:
-                self.set_bishop_moves(piece.colour)
+        moves_methods = {
+            Pieces.PAWN: self.board.get_pawn_moves,
+            Pieces.KNIGHT: self.board.get_knight_moves,
+            Pieces.BISHOP: self.board.get_bishop_moves,
+            Pieces.ROOK: self.board.get_rook_moves,
+            Pieces.QUEEN: self.board.get_queen_moves,
+            Pieces.KING: self.board.get_king_moves
+        }
+        self.possible_moves = moves_methods[piece.type](square)
     
     def make_move(self, square: Square) -> None:
         """Makes a move with the currently selected piece."""
