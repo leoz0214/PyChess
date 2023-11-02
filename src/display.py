@@ -10,8 +10,8 @@ from board import Board, Square
 from constants import (
     WIDTH, RANKS, FILES, DARK_SQUARE_COLOUR, LIGHT_SQUARE_COLOUR, PIECE_WIDTH,
     SELECTED_SQUARE_COLOUR, POSSIBLE_MOVE_CIRCLE_WIDTH,
-    POSSIBLE_MOVE_CIRCLE_COLOUR, REVERSE_BOARD)
-from utils import Colour, Pieces
+    POSSIBLE_MOVE_CIRCLE_COLOUR, REVERSE_BOARD, TITLE)
+from utils import Pieces
 
 
 class DisplayBoard:
@@ -95,24 +95,29 @@ class DisplayBoard:
         """Sets the possible moves based on the selected square."""
         square = self.selected_square
         piece = square.piece
-        moves_methods = {
-            Pieces.PAWN: self.board.get_pawn_moves,
-            Pieces.KNIGHT: self.board.get_knight_moves,
-            Pieces.BISHOP: self.board.get_bishop_moves,
-            Pieces.ROOK: self.board.get_rook_moves,
-            Pieces.QUEEN: self.board.get_queen_moves,
-            Pieces.KING: self.board.get_king_moves
-        }
-        self.possible_moves = moves_methods[piece.type](square)
+        self.possible_moves = self.board.move_methods[piece.type](square)
     
     def make_move(self, square: Square) -> None:
         """Makes a move with the currently selected piece."""
+        from_before = self.selected_square.copy()
+        to_before = square.copy()
+
         square.piece = self.selected_square.piece
         self.selected_square.piece = None
+
+        from_after = self.selected_square.copy()
+        to_after = square.copy()
+
         self.selected_square = None
         self.possible_moves.clear()
-        self.board.turn = (
-            Colour.BLACK if self.board.turn == Colour.WHITE else Colour.WHITE)
+
+        self.board.add_move(from_before, to_before, from_after, to_after)
+        is_checkmate = self.board.is_checkmate
+        if is_checkmate:
+            print("Checkmate!")
+        self.board.invert_turn()
+        pg.display.set_caption(
+            f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
 
 
 class DisplaySquare(pg.Rect):
@@ -147,29 +152,19 @@ class DisplaySquare(pg.Rect):
         else:
             self.left = self.reverse_left
             self.top = self.reverse_top
-        if (
-            self.board.selected_square is not None
-            and self.board.selected_square.file == self.file
-            and self.board.selected_square.rank == self.rank
-        ):
-            # Square selected.
-            colour = SELECTED_SQUARE_COLOUR
-        else:
-            colour = self.colour
-        pg.draw.rect(self.board.window, colour, self)
 
         square = self.board.board.get(self.file, self.rank)
+        colour = (
+            SELECTED_SQUARE_COLOUR if square is self.board.selected_square
+            else self.colour)
+        pg.draw.rect(self.board.window, colour, self)
+
         if not square.empty:
             coordinate = (
                 self.left + (self.width - PIECE_WIDTH) // 2,
                 self.top + (self.height - PIECE_WIDTH) // 2)
             self.board.window.blit(square.piece.image, coordinate)
-
-        if any(
-            possible_square.file == self.file
-            and possible_square.rank == self.rank
-                for possible_square in self.board.possible_moves
-        ):
+        if any(square is move for move in self.board.possible_moves):
             pg.draw.circle(
                 self.board.window, POSSIBLE_MOVE_CIRCLE_COLOUR,
                 (self.centerx, self.centery), POSSIBLE_MOVE_CIRCLE_WIDTH)
