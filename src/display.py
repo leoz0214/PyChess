@@ -107,11 +107,17 @@ class DisplayBoard:
     
     def make_move(self, square: Square) -> None:
         """Makes a move with the currently selected piece."""
+        is_en_passant = self.board.is_en_passant(self.selected_square, square)
         from_before = self.selected_square.copy()
         to_before = square.copy()
 
         square.piece = self.selected_square.piece
         self.selected_square.piece = None
+
+        if is_en_passant:
+            en_passant_victim = self.board.get(
+                to_before.file, from_before.rank)
+            en_passant_victim.piece = None
 
         from_after = self.selected_square.copy()
         to_after = square.copy()
@@ -119,7 +125,8 @@ class DisplayBoard:
         self.selected_square = None
         self.possible_moves.clear()
 
-        self.board.add_move(from_before, to_before, from_after, to_after)
+        self.board.add_move(
+            from_before, to_before, from_after, to_after, is_en_passant)
         self.checkmate_square = self.board.checkmate_square
         if self.checkmate_square is not None:
             self.finished = True

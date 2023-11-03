@@ -105,14 +105,22 @@ class Board:
     
     def add_move(
         self, from_before: "Square", to_before: "Square",
-        from_after: "Square", to_after: "Square"
+        from_after: "Square", to_after: "Square", is_en_passant: bool
     ) -> None:
         """Adds a move to the list of moves in the game."""
-        move = Move(from_before, to_before, from_after, to_after)
+        move = Move(
+            from_before, to_before, from_after, to_after,
+            en_passant=is_en_passant)
         self.moves.append(move)
     
     def legal_move(self, square: "Square", move: "Square") -> bool:
         """Checks a move is legal (does not lead to King capture)."""
+        is_en_passant = self.is_en_passant(square, move)
+        if is_en_passant:
+            en_passant_victim = self.get(move.file, square.rank)
+            en_passant_piece = en_passant_victim.piece
+            en_passant_victim.piece = None
+    
         # Simulate move and see the consequence.
         original_piece = square.piece
         square.piece = None
@@ -128,10 +136,25 @@ class Board:
 
         square.piece = original_piece
         move.piece = original_move_piece
+        if is_en_passant:
+            en_passant_victim.piece = en_passant_piece
         self.invert_turn()
         self.test_move = False
         
         return is_legal
+
+    def is_en_passant(self, square: "Square", move: "Square") -> bool:
+        """Check if a move is valid en passant."""
+        if square.piece.type != Pieces.PAWN or not self.moves:
+            return False
+        rank = RANKS - 3 - 1 if self.turn == Colour.WHITE else 3
+        if square.rank != rank:
+            return False
+        previous_move = self.moves[-1]
+        return (
+            previous_move.from_before.piece.type == Pieces.PAWN
+            and previous_move.from_before.file == move.file
+            and abs(previous_move.from_before.rank - rank) == 2)
     
     def filter_possible_moves(
         self, square: "Square", moves: list["Square"]
@@ -177,7 +200,10 @@ class Board:
         for move in (left, right):
             if (
                 move is not None
-                and (not move.empty) and move.piece.colour != self.turn
+                and (
+                    (not move.empty) and move.piece.colour != self.turn
+                    or self.is_en_passant(square, move)
+                )
             ):
                 moves.append(move)
         return self.filter_possible_moves(square, moves)
