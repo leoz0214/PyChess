@@ -6,7 +6,7 @@ such as en passant, promotion and castling.
 from copy import copy
 from dataclasses import dataclass
 from itertools import product
-from typing import Iterable
+from typing import Iterable, Union
 
 from constants import FILES, RANKS
 from pieces import Piece, Pawn, Knight, Bishop, Rook, Queen, King
@@ -69,8 +69,8 @@ class Board:
         return (Colour.BLACK, Colour.WHITE)[self.turn.value]
     
     @property
-    def is_checkmate(self) -> bool:
-        """Returns True if checkmate has been attained."""
+    def checkmate_square(self) -> Union["Square", None]:
+        """Returns the square of the checkmated king, else None."""
         self.test_move = True
         possible_next_squares = self.get_all_moves()
         king_square = None
@@ -88,11 +88,11 @@ class Board:
         king_attacked = king_square in possible_next_squares
         self.test_move = False
         if not king_attacked:
-            return False
+            return None
         self.invert_turn()
         is_checkmate = not self.get_all_moves()
         self.invert_turn()
-        return is_checkmate
+        return king_square if is_checkmate else None
     
     def get(self, file: int, rank: int) -> "Square":
         """Returns the square at a particular file and rank."""
