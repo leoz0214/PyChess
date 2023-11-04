@@ -9,7 +9,8 @@ import pygame as pg
 import main
 from board import Board, Square
 from constants import *
-from utils import Colour, render_text, surface_clicked
+from pieces import Piece, Queen, Rook, Bishop, Knight
+from utils import Colour, render_text, surface_clicked, in_rectangle
 
 
 class DisplayBoard:
@@ -41,6 +42,7 @@ class DisplayBoard:
         
         self.selected_square = None
         self.result = None
+        self.promotion = None
         self.checkmate_square = None
         self.possible_moves = []
 
@@ -60,11 +62,22 @@ class DisplayBoard:
                 square.display(self.in_reverse)
         if self.result is not None:
             self.result.display()
+        if self.promotion is not None:
+            self.promotion.display()
     
     def handle_click(self, coordinates: tuple[int, int]) -> None:
         """Handles a mouse click."""
         if self.result is not None:
             self.result.to_close(coordinates)
+            return
+        if self.promotion is not None:
+            if not self.promotion.closed:
+                self.promotion.handle_click(coordinates)
+            if self.promotion.closed:
+                if self.promotion.selection is not None:
+                    self.make_move(
+                        self.promotion.square, self.promotion.selection)
+                self.promotion = None
             return
         x, y = coordinates
         if not (
@@ -105,20 +118,38 @@ class DisplayBoard:
         piece = square.piece
         self.possible_moves = self.board.move_methods[piece.type](square)
     
-    def make_move(self, square: Square) -> None:
-        """Makes a move with the currently selected piece."""
-        is_en_passant = self.board.is_en_passant(self.selected_square, square)
+    def make_move(
+        self, square: Square, promotion_piece: Piece | None = None
+    ) -> None:
+        """
+        Makes a move with the currently selected piece.
+        If coming from the promtion menu, the promotion piece is the
+        piece to promote to.
+        """
+        is_en_passant = self.board.is_en_passant(
+            self.selected_square, square)
+        is_promotion = self.board.is_promotion(
+            self.selected_square, square)
         from_before = self.selected_square.copy()
         to_before = square.copy()
 
-        square.piece = self.selected_square.piece
-        self.selected_square.piece = None
-
         if is_en_passant:
+            # Performs the special en passant capture.
             en_passant_victim = self.board.get(
                 to_before.file, from_before.rank)
             en_passant_victim.piece = None
+        if is_promotion:
+            if promotion_piece is None:
+                # Allows the player to choose the piece to promote the pawn to.
+                self.promotion = PromotionMenu(
+                    self, self.board.turn, square,
+                    PROMOTION_WIDTH, PROMOTION_HEIGHT)
+                return
+            square.piece = promotion_piece
+        else:
+            square.piece = self.selected_square.piece
 
+        self.selected_square.piece = None
         from_after = self.selected_square.copy()
         to_after = square.copy()
 
@@ -126,7 +157,8 @@ class DisplayBoard:
         self.possible_moves.clear()
 
         self.board.add_move(
-            from_before, to_before, from_after, to_after, is_en_passant)
+            from_before, to_before, from_after, to_after,
+            is_en_passant, is_promotion)
         self.checkmate_square = self.board.checkmate_square
         if self.checkmate_square is not None:
             self.finished = True
@@ -230,6 +262,55 @@ class DisplayResult(pg.Rect):
     def to_close(self, coordinates: tuple[int, int]) -> None:
         """Checks if the close button was clicked. If so, close the popup."""
         if (not self.closed) and surface_clicked(
+            self.close_x, *self.close_x_coordinates, coordinates
+        ):
+            self.closed = True
+
+
+class PromotionMenu(pg.Rect):
+    """
+    Allows the player to select a piece to promote a pawn to.
+    The possible pieces are: Queen, Rook, Bishop and Knight.
+    """
+
+    def __init__(
+        self, board: DisplayBoard, colour: Colour, move: Square,
+        width: int, height: int
+    ) -> None:
+        self.board = board
+        self.width = width
+        self.height = height
+        self.left = self.board.min_x + (self.board.width - self.width) // 2
+        self.top = self.board.min_y + (self.board.height - self.height) // 2
+        self.square = move
+        super().__init__(self.left, self.top, self.width, self.height)
+        # Pairs of pieces and their TOP LEFT CORNER co-ordinate.
+        self.pieces = [
+            (piece(colour), (
+                self.centerx + PIECE_WIDTH * (i - 2), self.top + 50))
+            for i, piece in enumerate((Queen, Rook, Bishop, Knight))]
+        self.selection = None
+        self.closed = False
+        self.close_x = render_text("x", 30, GREY)
+        self.close_x_coordinates = (self.left + self.width - 20, self.top + 20)
+    
+    def display(self) -> None:
+        """Displays the promotion menu."""
+        pg.draw.rect(self.board.window, PROMOTION_COLOUR, self)
+        for piece, top_left in self.pieces:
+            self.board.window.blit(piece.image, top_left)
+        self.board.game.display_rendered_text(
+            self.close_x, *self.close_x_coordinates)
+
+    def handle_click(self, coordinates: tuple[int, int]) -> None:
+        """Check for a piece click, or the X to cancel."""
+        for piece, top_left in self.pieces:
+            bottom_right = (
+                top_left[0] + PIECE_WIDTH, top_left[1] + PIECE_WIDTH)
+            if in_rectangle(coordinates, top_left, bottom_right):
+                self.selection = piece
+                self.closed = True
+        if surface_clicked(
             self.close_x, *self.close_x_coordinates, coordinates
         ):
             self.closed = True

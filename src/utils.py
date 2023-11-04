@@ -29,16 +29,25 @@ def render_text(text: str, size: int, fg: str) -> pg.Surface:
     return textbox
 
 
+def in_rectangle(
+    coordinates: tuple[int, int],
+    top_left: tuple[int, int], bottom_right: tuple[int, int]
+) -> bool:
+    """Returns True if given coordinates lie in a rectangle else False."""
+    x1, y1 = top_left
+    x2, y2 = bottom_right
+    return x1 <= coordinates[0] <= x2 and y1 <= coordinates[1] <= y2
+
+
 def surface_clicked(
     surface: pg.Surface, x: int, y: int, coordinates: tuple[int, int],
     center: bool = True
 ) -> bool:
     """Returns True if a coordinate lies in a surface, else False."""
-    click_x, click_y = coordinates
     width = surface.get_width()
     height = surface.get_height()
     if not center:
         left, top = x, y
     else:
         left, top = x - width // 2, y - height // 2
-    return left <= click_x <= left + width and top <= click_y <= top + height
+    return in_rectangle(coordinates, (left, top), (left + width, top + height))

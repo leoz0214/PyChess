@@ -105,16 +105,22 @@ class Board:
     
     def add_move(
         self, from_before: "Square", to_before: "Square",
-        from_after: "Square", to_after: "Square", is_en_passant: bool
+        from_after: "Square", to_after: "Square", is_en_passant: bool,
+        is_promotion: bool
     ) -> None:
         """Adds a move to the list of moves in the game."""
         move = Move(
             from_before, to_before, from_after, to_after,
-            en_passant=is_en_passant)
+            en_passant=is_en_passant, promotion=is_promotion)
         self.moves.append(move)
     
     def legal_move(self, square: "Square", move: "Square") -> bool:
-        """Checks a move is legal (does not lead to King capture)."""
+        """
+        Checks a move is legal (does not lead to King capture).
+        Note: treat pawn promotion as a normal pawn move. It does
+        not matter what the pawn promotes to as this will not
+        affect the legality of the move.
+        """
         is_en_passant = self.is_en_passant(square, move)
         if is_en_passant:
             en_passant_victim = self.get(move.file, square.rank)
@@ -155,6 +161,11 @@ class Board:
             previous_move.from_before.piece.type == Pieces.PAWN
             and previous_move.from_before.file == move.file
             and abs(previous_move.from_before.rank - rank) == 2)
+
+    def is_promotion(self, square: "Square", move: "Square") -> bool:
+        """Check if a move is a pawn promotion."""
+        return (
+            square.piece.type == Pieces.PAWN and move.rank in (0, RANKS - 1))
     
     def filter_possible_moves(
         self, square: "Square", moves: list["Square"]
