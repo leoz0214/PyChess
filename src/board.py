@@ -26,7 +26,7 @@ class Move:
     from_after: "Square"
     to_after: "Square"
     # Special attributes.
-    castle: bool = False
+    castling: bool = False
     en_passant: bool = False
     promotion: bool = False
 
@@ -106,12 +106,12 @@ class Board:
     def add_move(
         self, from_before: "Square", to_before: "Square",
         from_after: "Square", to_after: "Square", is_en_passant: bool,
-        is_promotion: bool
+        is_promotion: bool, is_castling: bool
     ) -> None:
         """Adds a move to the list of moves in the game."""
         move = Move(
             from_before, to_before, from_after, to_after,
-            en_passant=is_en_passant, promotion=is_promotion)
+            is_castling, is_en_passant, is_promotion)
         self.moves.append(move)
     
     def legal_move(self, square: "Square", move: "Square") -> bool:
@@ -122,10 +122,16 @@ class Board:
         affect the legality of the move.
         """
         is_en_passant = self.is_en_passant(square, move)
+        is_castling = self.is_castling(square, move, validate=False)
         if is_en_passant:
             en_passant_victim = self.get(move.file, square.rank)
             en_passant_piece = en_passant_victim.piece
             en_passant_victim.piece = None
+        if is_castling:
+            kingside = move.file == 6
+            rook_square = self.get(FILES - 1 if kingside else 0, square.rank)
+            rook = rook_square.piece
+            rook_square.piece = None
     
         # Simulate move and see the consequence.
         original_piece = square.piece
@@ -133,6 +139,12 @@ class Board:
 
         original_move_piece = move.piece
         move.piece = original_piece
+
+        if is_castling:
+            # Also move the rook accordingly.
+            new_rook_square = self.get(5 if kingside else 3, square.rank)
+            new_rook_square.piece = rook
+
         self.invert_turn()
         self.test_move = True
         opponent_moves = self.get_all_moves()
@@ -144,6 +156,10 @@ class Board:
         move.piece = original_move_piece
         if is_en_passant:
             en_passant_victim.piece = en_passant_piece
+        if is_castling:
+            rook_square.piece = rook
+            new_rook_square.piece = None
+
         self.invert_turn()
         self.test_move = False
         
@@ -166,6 +182,58 @@ class Board:
         """Check if a move is a pawn promotion."""
         return (
             square.piece.type == Pieces.PAWN and move.rank in (0, RANKS - 1))
+    
+    def is_castling(
+        self, square: "Square", move: "Square", validate: bool = True
+    ) -> bool:
+        """Check if a move is a valid castling move."""
+        if not (
+            square.piece.type == Pieces.KING
+            and abs(move.file - square.file) == 2
+        ):
+            return False
+        if not validate:
+            return True
+        kingside = move.file == 6
+        rook_square = self.get(FILES - 1 if kingside else 0, square.rank)
+        if (
+            rook_square.empty or rook_square.piece.type != Pieces.ROOK
+            or rook_square.piece.colour != self.turn
+        ):
+            return False
+        king = square.piece
+        rook = rook_square.piece
+        # Confirms the king and rook have not moved.
+        if any(
+            played_move.from_before.piece in (king, rook)
+            for played_move in self.moves[self.turn.value::2]
+        ):
+            return False
+        # Confirms all squares between king and rook are empty.
+        file_range = range(5, FILES - 1) if kingside else range(1, 4)
+        if any(
+            not self.get(file, square.rank).empty for file in file_range
+        ):
+            return False
+        # Confirms King is not in check and none of the square between
+        # the king and castle position are attacked by the opponent.
+        file_range = range(4, 6) if kingside else range(3, 5)
+        squares = [self.get(file, square.rank) for file in file_range]
+        return not self.any_square_under_attack(squares)
+
+    def any_square_under_attack(self, squares: list["Square"]) -> bool:
+        """
+        Check if any squares out of a
+        given list are under attack by the opponent.
+        Remember, pinned opponent pieces can still attack.
+        """
+        self.test_move = True
+        self.invert_turn()
+        opponent_moves = self.get_all_moves()
+        attacked = any(square in opponent_moves for square in squares)
+        self.test_move = False
+        self.invert_turn()
+        return attacked
     
     def filter_possible_moves(
         self, square: "Square", moves: list["Square"]
@@ -286,7 +354,20 @@ class Board:
         iterable = filter(
             lambda shifts: shifts.count(0) < 2, product((-1, 0, 1), repeat=2))
         # King can only travel one square in any direction.
-        return self._get_straight_line_moves(square, iterable, max_distance=1)
+        moves = self._get_straight_line_moves(square, iterable, max_distance=1)
+        backrank = 0 if self.turn == Colour.WHITE else RANKS - 1
+        if square.file == 4 and square.rank == backrank and not self.test_move:
+            # Also check castling, provided King is at starting square
+            # and also the move is not a test move.
+            kingside_castle = self.get(6, backrank)
+            queenside_castle = self.get(2, backrank)
+            for move in (kingside_castle, queenside_castle):
+                if (
+                    self.is_castling(square, move)
+                    and self.legal_move(square, move)
+                ):
+                    moves.append(move)
+        return moves       
 
     def get_all_moves(self) -> list["Square"]:
         """
