@@ -10,7 +10,7 @@ import main
 from board import Board, Square
 from constants import *
 from pieces import Piece, Queen, Rook, Bishop, Knight
-from utils import Colour, render_text, surface_clicked, in_rectangle
+from utils import Colour, Pieces, render_text, surface_clicked, in_rectangle
 
 
 class DisplayBoard:
@@ -44,6 +44,7 @@ class DisplayBoard:
         self.result = None
         self.promotion = None
         self.checkmate_square = None
+        self.stalemate_square = None
         self.possible_moves = []
 
     @property
@@ -99,7 +100,7 @@ class DisplayBoard:
         if selected_square is self.selected_square:
             # Deselect the currently selected square and exit.
             self.selected_square = None
-            self.possible_moves.clear()
+            self.possible_moves = []
             return
         if (
             (not selected_square.empty)
@@ -116,7 +117,7 @@ class DisplayBoard:
         """Sets the possible moves based on the selected square."""
         square = self.selected_square
         piece = square.piece
-        self.possible_moves = self.board.move_methods[piece.type](square)
+        self.possible_moves = self.board.current_moves[piece]
     
     def make_move(
         self, square: Square, promotion_piece: Piece | None = None
@@ -179,6 +180,21 @@ class DisplayBoard:
                 f"{TITLE} - {('White', 'Black')[self.board.turn.value]} wins")
             return
         self.board.invert_turn()
+        self.board.set_moves()
+        if not any(moves for moves in self.board.current_moves.values()):
+            self.finished = True
+            self.result = DisplayResult(
+                self, None, RESULT_WIDTH, RESULT_HEIGHT)
+            pg.display.set_caption(f"{TITLE} - Stalemate")
+            for file in range(FILES):
+                for rank in range(RANKS):
+                    square = self.board.get(file, rank)
+                    if (
+                        (not square.empty) and square.piece.type == Pieces.KING
+                        and square.piece.colour == self.board.turn
+                    ):
+                        self.stalemate_square = square
+                        return
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
 
@@ -219,7 +235,9 @@ class DisplaySquare(pg.Rect):
         square = self.board.board.get(self.file, self.rank)
         colour = (
             SELECTED_SQUARE_COLOUR if square is self.board.selected_square
-            else RED if square is self.board.checkmate_square else self.colour)
+            else RED if square is self.board.checkmate_square
+            else GREY if square is self.board.stalemate_square
+            else self.colour)
         pg.draw.rect(self.board.window, colour, self)
 
         if not square.empty:

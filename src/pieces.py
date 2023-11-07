@@ -30,6 +30,9 @@ class Piece:
     
     def __eq__(self, piece: "Piece") -> bool:
         return type(self) is type(piece) and self.__dict__ == piece.__dict__
+    
+    def __hash__(self) -> int:
+        return id(self)
 
 
 class Pawn(Piece):

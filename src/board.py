@@ -61,6 +61,7 @@ class Board:
             Pieces.QUEEN: self.get_queen_moves,
             Pieces.KING: self.get_king_moves
         }
+        self.set_moves()
     
     @property
     def opponent(self) -> Colour:
@@ -382,6 +383,16 @@ class Board:
                     piece_moves = self.move_methods[square.piece.type](square)
                     moves.extend(piece_moves)
         return moves
+
+    def set_moves(self) -> None:
+        """Sets all possible moves for all pieces, in the dictionary."""
+        self.current_moves = {}
+        for file in range(FILES):
+            for rank in range(RANKS):
+                square = self.get(file, rank)
+                if (not square.empty) and square.piece.colour == self.turn:
+                    piece_moves = self.move_methods[square.piece.type](square)
+                    self.current_moves[square.piece] = piece_moves
 
 
 class Square:
