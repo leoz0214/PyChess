@@ -181,10 +181,16 @@ class DisplayBoard:
             return
         self.board.invert_turn()
         self.board.set_moves()
+        if self.board.is_nfold_repetition(5):
+            self.finished = True
+            self.result = DisplayResult(
+                self, "Fivefold Repetition", RESULT_WIDTH, RESULT_HEIGHT)
+            pg.display.set_caption(f"{TITLE} - Fivefold Repetition")     
+            return     
         if not any(moves for moves in self.board.current_moves.values()):
             self.finished = True
             self.result = DisplayResult(
-                self, None, RESULT_WIDTH, RESULT_HEIGHT)
+                self, "Stalemate", RESULT_WIDTH, RESULT_HEIGHT)
             pg.display.set_caption(f"{TITLE} - Stalemate")
             for file in range(FILES):
                 for rank in range(RANKS):
@@ -255,7 +261,7 @@ class DisplayResult(pg.Rect):
     """Displays the result of the game."""
 
     def __init__(
-        self, board: DisplayBoard, winner: Colour | None,
+        self, board: DisplayBoard, outcome: Colour | str,
         width: int, height: int
     ) -> None:
         self.board = board
@@ -263,13 +269,13 @@ class DisplayResult(pg.Rect):
         self.height = height
         self.left = self.board.min_x + (self.board.width - self.width) // 2
         self.top = self.board.min_y + (self.board.height - self.height) // 2
-        outcome_text = "Checkmate" if winner is not None else "Stalemate"
-        self.outcome_textbox = render_text(outcome_text, 50, GREY)
+        outcome_text = "Checkmate" if isinstance(outcome, Colour) else outcome
+        outcome_size = OUTCOME_TEXT_SIZES[outcome_text]
+        self.outcome_textbox = render_text(outcome_text, outcome_size, GREY)
         info_text, colour = {
             Colour.WHITE: ("White wins!", WHITE),
             Colour.BLACK: ("Black wins!", BLACK),
-            None: ("Draw!", GREY)
-        }[winner]
+        }.get(outcome, ("Draw", GREY))
         self.info_textbox = render_text(info_text, 30, colour)
         self.close_x = render_text("x", 30, GREY)
         self.close_x_coordinates = (self.left + self.width - 20, self.top + 20)

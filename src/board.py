@@ -5,6 +5,7 @@ such as en passant, promotion and castling.
 """
 from copy import copy
 from dataclasses import dataclass
+from hashlib import sha256
 from itertools import product
 from typing import Iterable, Union
 
@@ -61,6 +62,9 @@ class Board:
             Pieces.QUEEN: self.get_queen_moves,
             Pieces.KING: self.get_king_moves
         }
+        # Tracks the number of times unique positions have been seen
+        # to allow for n-fold repetition detection.
+        self.position_counts = {}
         self.set_moves()
     
     @property
@@ -251,6 +255,35 @@ class Board:
             return moves
         return [move for move in moves if self.legal_move(square, move)]
 
+    def is_nfold_repetition(self, n: int) -> bool:
+        """Returns if n-fold repetition has been attained."""
+        return max(self.position_counts.values()) >= n
+
+    def record_position(self) -> None:
+        """
+        Records the current board state fully,
+        including pieces, possible moves and turns, adding to a counter.
+        """
+        state = [self.turn.value]
+        # Add board state.
+        for file in range(FILES):
+            for rank in range(RANKS):
+                square = self.get(file, rank)
+                if square.empty:
+                    state.append(None)
+                else:
+                    state.append(repr(square.piece))
+        # Add possible moves.
+        for piece, moves in self.current_moves.items():
+            piece_move_state = (repr(piece),) + tuple(
+                (move.file, move.rank) for move in moves)
+            state.append(piece_move_state)
+        # Store hash to reduce memory consumption
+        # (do not need to know actual position).
+        hash_ = sha256(str(state).encode(), usedforsecurity=False).hexdigest()
+        self.position_counts[hash_] = self.position_counts.get(hash_, 0) + 1
+
+
     def get_pawn_moves(self, square: "Square") -> list["Square"]:
         """The player selected a pawn, now get the possible moves."""
         forward_two = None
@@ -393,6 +426,7 @@ class Board:
                 if (not square.empty) and square.piece.colour == self.turn:
                     piece_moves = self.move_methods[square.piece.type](square)
                     self.current_moves[square.piece] = piece_moves
+        self.record_position()
 
 
 class Square:

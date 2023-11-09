@@ -35,6 +35,12 @@ PROMOTION_COLOUR = "#03a9fc"
 PROMOTION_WIDTH = 300
 PROMOTION_HEIGHT = 125
 
+OUTCOME_TEXT_SIZES = {
+    "Checkmate": 50,
+    "Stalemate": 50,
+    "Fivefold Repetition": 30
+}
+
 
 # Actual colours which can be displayed.
 RED = "red"
