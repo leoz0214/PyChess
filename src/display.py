@@ -173,25 +173,28 @@ class DisplayBoard:
             is_en_passant, is_promotion, is_castling)
         self.checkmate_square = self.board.checkmate_square
         if self.checkmate_square is not None:
-            self.finished = True
-            self.result = DisplayResult(
-                self, self.board.turn, RESULT_WIDTH, RESULT_HEIGHT)
-            pg.display.set_caption(
+            title = (
                 f"{TITLE} - {('White', 'Black')[self.board.turn.value]} wins")
+            self.end(self.board.turn, title)
             return
         self.board.invert_turn()
         self.board.set_moves()
         if self.board.is_nfold_repetition(5):
-            self.finished = True
-            self.result = DisplayResult(
-                self, "Fivefold Repetition", RESULT_WIDTH, RESULT_HEIGHT)
-            pg.display.set_caption(f"{TITLE} - Fivefold Repetition")     
-            return     
+            # Automatic draw upon 5 repetitions.
+            self.end("Fivefold Repetition", f"{TITLE} - Fivefold Repetition")    
+            return
+        if self.board.is_nmove_rule(75):
+            # 75 Move Rule automatic draw.
+            self.end("75 Move Rule", f"{TITLE} - 75 Move Rule")
+            return
+        if self.board.is_insufficient_material:
+            # Definitely not possible to checkmate. Game over.
+            self.end(
+                "Insufficient Material", f"{TITLE} - Insufficient Material")
+            return
         if not any(moves for moves in self.board.current_moves.values()):
-            self.finished = True
-            self.result = DisplayResult(
-                self, "Stalemate", RESULT_WIDTH, RESULT_HEIGHT)
-            pg.display.set_caption(f"{TITLE} - Stalemate")
+            # Not checkmate, but no legal moves i.e. stalemate.
+            self.end("Stalemate", f"{TITLE} - Stalemate")
             for file in range(FILES):
                 for rank in range(RANKS):
                     square = self.board.get(file, rank)
@@ -203,6 +206,12 @@ class DisplayBoard:
                         return
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
+
+    def end(self, outcome: Colour | str, title: str) -> None:
+        """Common function to handle game over (win/draw)."""
+        self.finished = True
+        self.result = DisplayResult(self, outcome, RESULT_WIDTH, RESULT_HEIGHT)
+        pg.display.set_caption(title)
 
 
 class DisplaySquare(pg.Rect):

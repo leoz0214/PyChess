@@ -282,7 +282,33 @@ class Board:
         # (do not need to know actual position).
         hash_ = sha256(str(state).encode(), usedforsecurity=False).hexdigest()
         self.position_counts[hash_] = self.position_counts.get(hash_, 0) + 1
-
+    
+    def is_nmove_rule(self, n: int) -> bool:
+        """
+        Returns True if n moves have passed
+        without a pawn move or capture by either player.
+        In this context, a move is defined as a player completing
+        their turn followed by the opponent also completing their turn.
+        So the last 2n moves will be checked, and also,
+        number of moves >= 2n for True. 
+        """
+        if len(self.moves) < n * 2:
+            return False
+        to_check = self.moves[-n * 2:]
+        return all(
+            move.from_before.piece.type != Pieces.PAWN
+            and move.to_before.empty for move in to_check)
+    
+    @property
+    def is_insufficient_material(self) -> bool:
+        """Performs a basic check to see if there is no possible checkmate."""
+        # Only Kings remaining.
+        for file in range(FILES):
+            for rank in range(RANKS):
+                square = self.get(file, rank)
+                if (not square.empty) and square.piece.type != Pieces.KING:
+                    return False
+        return True
 
     def get_pawn_moves(self, square: "Square") -> list["Square"]:
         """The player selected a pawn, now get the possible moves."""

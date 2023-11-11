@@ -38,7 +38,9 @@ PROMOTION_HEIGHT = 125
 OUTCOME_TEXT_SIZES = {
     "Checkmate": 50,
     "Stalemate": 50,
-    "Fivefold Repetition": 30
+    "Fivefold Repetition": 30,
+    "75 Move Rule": 40,
+    "Insufficient Material": 30
 }
 
 
