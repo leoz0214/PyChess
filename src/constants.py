@@ -6,7 +6,7 @@ import pathlib
 WIDTH = 1000
 HEIGHT = 600
 TITLE = "PyChess"
-FPS = 30
+FPS = 60
 
 # General chess board information.
 RANKS = 8 # rows on a chess board.

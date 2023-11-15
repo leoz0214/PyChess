@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.pyd": "python",
+        "cmath": "cpp"
+    }
+}

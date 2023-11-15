@@ -39,6 +39,23 @@ class Game:
                         if event.button in (1, 3):
                             coordinates = pg.mouse.get_pos()
                             board.handle_click(coordinates)
+                    case _:
+                        if (
+                            event.type == pg.MOUSEBUTTONUP
+                            and event.button in (1, 3)
+                            and board.confirm_deselect
+                        ):
+                            board.deselect()
+                            continue
+                        pressed = pg.mouse.get_pressed()
+                        if (
+                            (pressed[0] or pressed[2])
+                            and board.selected_square is not None
+                        ):
+                            coordinates = pg.mouse.get_pos()
+                            board.handle_drag(coordinates)
+                        elif board.drag_coordinates is not None:
+                            board.handle_drop()
             board.display()
             pg.display.update()
 

@@ -41,6 +41,10 @@ class DisplayBoard:
                     for colour, file in zip(colour_cycle, range(FILES))])
         
         self.selected_square = None
+        self.drag_coordinates = None
+        self.drag_image = None
+        self.confirm_deselect = False
+    
         self.result = None
         self.promotion = None
         self.checkmate_square = None
@@ -65,7 +69,39 @@ class DisplayBoard:
             self.result.display()
         if self.promotion is not None:
             self.promotion.display()
+        if self.drag_coordinates is not None:
+            x, y = self.drag_coordinates
+            # Ensures image remains in board.
+            image_coordinates = (
+                min(max(x - PIECE_WIDTH // 2, self.min_x - PIECE_WIDTH // 2),
+                    self.max_x - PIECE_WIDTH // 2),
+                min(max(y - PIECE_WIDTH // 2, self.min_y - PIECE_WIDTH // 2),
+                    self.max_y - PIECE_WIDTH // 2))
+            self.window.blit(self.drag_image, image_coordinates)
     
+    def get_square(self, coordinates: tuple[int, int]) -> Square | None:
+        """
+        Returns the internal square lying in given coordinates,
+        else None if out of bounds.
+        """
+        x, y = coordinates
+        if not (
+            self.min_x <= x <= self.max_x and self.min_y <= y <= self.max_y
+        ):
+            # Board not clicked.
+            return None
+        file = (x - self.min_x) // self.square_width
+        rank = RANKS - 1 - (y - self.min_y) // self.square_width
+        if self.in_reverse:
+            # File and rank are reversed (inverted board).
+            file = FILES - 1 - file
+            rank = RANKS - 1 - rank
+        try:
+            return self.board.get(file, rank)
+        except IndexError:
+            # Edge case - board not clicked after all.
+            return None
+ 
     def handle_click(self, coordinates: tuple[int, int]) -> None:
         """Handles a mouse click."""
         if self.result is not None:
@@ -80,27 +116,9 @@ class DisplayBoard:
                         self.promotion.square, self.promotion.selection)
                 self.promotion = None
             return
-        x, y = coordinates
-        if not (
-            self.min_x <= x <= self.max_x and self.min_y <= y <= self.max_y
-        ):
-            # Board not clicked.
-            return
-        file = (x - self.min_x) // self.square_width
-        rank = RANKS - 1 - (y - self.min_y) // self.square_width
-        if self.in_reverse:
-            # File and rank are reversed (inverted board).
-            file = FILES - 1 - file
-            rank = RANKS - 1 - rank
-        try:
-            selected_square = self.board.get(file, rank)
-        except IndexError:
-            # Edge case - board not clicked after all.
-            return
+        selected_square = self.get_square(coordinates)
         if selected_square is self.selected_square:
-            # Deselect the currently selected square and exit.
-            self.selected_square = None
-            self.possible_moves = []
+            self.confirm_deselect = True
             return
         if (
             (not selected_square.empty)
@@ -112,6 +130,40 @@ class DisplayBoard:
             if move is selected_square:
                 self.make_move(move)
                 break
+        
+    def deselect(self) -> None:
+        """Deselect the currently selected square."""
+        self.selected_square = None
+        self.drag_coordinates = None
+        self.drag_image = None
+        self.confirm_deselect = False
+        self.possible_moves = []
+    
+    def handle_drag(self, coordinates: tuple[int, int]) -> None:
+        """Handles dragging a piece."""
+        if (
+            self.drag_coordinates is None
+            and self.get_square(coordinates) is not self.selected_square
+        ):
+            # Dragging does not start in the source square.
+            return
+        if self.drag_image is None:
+            self.drag_image = self.board.get(
+                self.selected_square.file, self.selected_square.rank
+            ).piece.image
+        self.drag_coordinates = coordinates
+        self.confirm_deselect = False
+    
+    def handle_drop(self) -> None:
+        """No longer dragging a piece."""
+        square = self.get_square(self.drag_coordinates)
+        if square in self.possible_moves:
+            self.make_move(square)
+        else:
+            self.selected_square = None
+            self.possible_moves = []
+        self.drag_coordinates = None
+        self.drag_image = None
 
     def set_possible_moves(self) -> None:
         """Sets the possible moves based on the selected square."""
@@ -259,7 +311,11 @@ class DisplaySquare(pg.Rect):
             coordinate = (
                 self.left + (self.width - PIECE_WIDTH) // 2,
                 self.top + (self.height - PIECE_WIDTH) // 2)
-            self.board.window.blit(square.piece.image, coordinate)
+            if (
+                square is not self.board.selected_square
+                or self.board.drag_coordinates is None
+            ):
+                self.board.window.blit(square.piece.image, coordinate)
         if square in self.board.possible_moves:
             pg.draw.circle(
                 self.board.window, POSSIBLE_MOVE_CIRCLE_COLOUR,
