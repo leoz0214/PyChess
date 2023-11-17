@@ -4,10 +4,8 @@ import sys
 import pygame as pg
 
 import display
-from constants import (
-    WIDTH, HEIGHT, TITLE, FPS, SQUARE_WIDTH, BACKGROUND_COLOUR,
-    BOARD_MIN_X, BOARD_MIN_Y)
-from utils import render_text
+from constants import *
+from utils import render_text, Colour
 
 
 pg.font.init()
@@ -19,12 +17,21 @@ class Game:
     def __init__(self) -> None:
         self.window = pg.display.set_mode((WIDTH, HEIGHT))
         self.clock = pg.time.Clock()
-        pg.display.set_caption(TITLE)
     
     def start(self) -> None:
         """Starts the game, including the main loop."""
+        pg.display.set_caption(TITLE)
         board = display.DisplayBoard(
             self, BOARD_MIN_X, BOARD_MIN_Y, SQUARE_WIDTH)
+        white_info = display.PlayerInfo(
+            self, Colour.WHITE, WHITE_MIN_X, WHITE_MIN_Y,
+            PLAYER_INFO_WIDTH, PLAYER_INFO_HEIGHT, PLAYER_INFO_FG)
+        black_info = display.PlayerInfo(
+            self, Colour.BLACK, BLACK_MIN_X, BLACK_MIN_Y,
+            PLAYER_INFO_WIDTH, PLAYER_INFO_HEIGHT, PLAYER_INFO_FG)
+        game_end_options = display.GameEndOptions(
+            self, GAME_END_MIN_X, GAME_END_MIN_Y,
+            GAME_END_WIDTH, GAME_END_HEIGHT)
         while True:
             self.clock.tick(FPS)
             self.window.fill(BACKGROUND_COLOUR)
@@ -39,6 +46,11 @@ class Game:
                         if event.button in (1, 3):
                             coordinates = pg.mouse.get_pos()
                             board.handle_click(coordinates)
+                            if board.result is not None:
+                                game_end_options.handle_click(coordinates)
+                                if game_end_options.replay:
+                                    # Exit current loop to replay the game.
+                                    return
                     case _:
                         if (
                             event.type == pg.MOUSEBUTTONUP
@@ -57,6 +69,10 @@ class Game:
                         elif board.drag_coordinates is not None:
                             board.handle_drop()
             board.display()
+            white_info.display()
+            black_info.display()
+            if board.result is not None:
+                game_end_options.display()
             pg.display.update()
 
     def display_text(
@@ -87,4 +103,6 @@ class Game:
 if __name__ == "__main__":
     pg.init()
     game = Game()
-    game.start()
+    # The infinite loop here allows for replays/rematches.
+    while True:
+        game.start()

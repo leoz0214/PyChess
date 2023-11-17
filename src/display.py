@@ -3,6 +3,7 @@ Handles displaying the chess board and other game features
 on the window of the program, not the actual internal data structures.
 """
 from itertools import cycle
+from math import hypot
 
 import pygame as pg
 
@@ -41,6 +42,7 @@ class DisplayBoard:
                     for colour, file in zip(colour_cycle, range(FILES))])
         
         self.selected_square = None
+        self.initial_coordinates = None
         self.drag_coordinates = None
         self.drag_image = None
         self.confirm_deselect = False
@@ -54,8 +56,7 @@ class DisplayBoard:
     @property
     def in_reverse(self) -> bool:
         """Board display is inverted."""
-        # White = 0, Black = 1.
-        return REVERSE_BOARD and self.board.turn.value
+        return REVERSE_BOARD and self.board.turn == Colour.BLACK
     
     def display(self) -> None:
         """
@@ -120,6 +121,7 @@ class DisplayBoard:
         if selected_square is self.selected_square:
             self.confirm_deselect = True
             return
+        self.initial_coordinates = coordinates
         if (
             (not selected_square.empty)
             and selected_square.piece.colour == self.board.turn
@@ -134,6 +136,7 @@ class DisplayBoard:
     def deselect(self) -> None:
         """Deselect the currently selected square."""
         self.selected_square = None
+        self.initial_coordinates = None
         self.drag_coordinates = None
         self.drag_image = None
         self.confirm_deselect = False
@@ -141,11 +144,18 @@ class DisplayBoard:
     
     def handle_drag(self, coordinates: tuple[int, int]) -> None:
         """Handles dragging a piece."""
-        if (
-            self.drag_coordinates is None
-            and self.get_square(coordinates) is not self.selected_square
-        ):
-            # Dragging does not start in the source square.
+        if self.drag_coordinates is None:
+            if self.get_square(coordinates) is not self.selected_square:
+                # Dragging does not start in the source square.
+                return
+            displacement = hypot(
+                coordinates[0] - self.initial_coordinates[0],
+                coordinates[1] - self.initial_coordinates[1])
+            if displacement <= INSIGNIFICANT_DRAG_RADIUS:
+                # Too small of a drag to count.
+                # This mitigates the risk of accidental drag invocation.
+                return
+        if self.promotion is not None:
             return
         if self.drag_image is None:
             self.drag_image = self.board.get(
@@ -351,7 +361,7 @@ class DisplayResult(pg.Rect):
         """Displays the outcome."""
         if self.closed:
             return
-        pg.draw.rect(self.board.window, RESULT_COLOUR, self)
+        pg.draw.rect(self.board.window, RESULT_COLOUR, self, border_radius=10)
         self.board.game.display_rendered_text(
             self.outcome_textbox, self.centerx, self.top + 75)
         self.board.game.display_rendered_text(
@@ -396,7 +406,8 @@ class PromotionMenu(pg.Rect):
     
     def display(self) -> None:
         """Displays the promotion menu."""
-        pg.draw.rect(self.board.window, PROMOTION_COLOUR, self)
+        pg.draw.rect(
+            self.board.window, PROMOTION_COLOUR, self, border_radius=10)
         for piece, top_left in self.pieces:
             self.board.window.blit(piece.image, top_left)
         self.board.game.display_rendered_text(
@@ -414,3 +425,71 @@ class PromotionMenu(pg.Rect):
             self.close_x, *self.close_x_coordinates, coordinates
         ):
             self.closed = True
+
+
+class PlayerInfo(pg.Rect):
+    """
+    Stores information for a particular colour during the game,
+    including pieces captured, time remaining etc.
+    """
+
+    def __init__(
+        self, game: "main.Game", colour: Colour,
+        min_x: int, min_y: int, width: int, height: int,
+        text_colour: str
+    ) -> None:
+        self.game = game
+        self.colour = colour
+        self.min_x = min_x
+        self.min_y = min_y
+        self.width = width
+        self.height = height
+        self.fg = text_colour
+        super().__init__(self.min_x, self.min_y, width, height)
+
+        self.title = render_text(
+            ("White", "Black")[self.colour.value], 25, self.fg)
+        self.title_coordinates = (
+            self.min_x + self.width // 2, self.min_y + 25)
+    
+    def display(self) -> None:
+        """Displays the player information section."""
+        bg = WHITE if self.colour == Colour.WHITE else BLACK
+        pg.draw.rect(self.game.window, bg, self, border_radius=10)
+        self.game.display_rendered_text(self.title, *self.title_coordinates)
+
+
+class GameEndOptions(pg.Rect):
+    """
+    Ways to proceed after the game has ended, such as replaying
+    or exiting the app.
+    """
+
+    def __init__(
+        self, game: "main.Game", min_x: int, min_y: int,
+        width: int, height: int
+    ) -> None:
+        self.game = game
+        self.min_x = min_x
+        self.min_y = min_y
+        self.width = width
+        self.height = height
+        super().__init__(self.min_x, self.min_y, self.width, self.height)
+    
+        self.replay_text = render_text("Replay", 25, DARK_GREY)
+        self.replay_coordinates = (
+            self.min_x + self.width // 2, self.min_y + self.height // 2)
+        
+        self.replay = False
+
+    def display(self) -> None:
+        """Displays the game over options."""
+        self.game.display_rendered_text(
+            self.replay_text, *self.replay_coordinates)
+    
+    def handle_click(self, coordinates: tuple[int, int]) -> None:
+        """Checks for any relevant clicks on any of the options."""
+        if surface_clicked(
+            self.replay_text, *self.replay_coordinates, coordinates
+        ):
+            self.replay = True
