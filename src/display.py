@@ -58,6 +58,11 @@ class DisplayBoard:
         """Board display is inverted."""
         return REVERSE_BOARD and self.board.turn == Colour.BLACK
     
+    @property
+    def finished(self) -> bool:
+        """Game is over: either a winner or draw."""
+        return self.result is not None
+    
     def display(self) -> None:
         """
         Displays all squares on the chess board.
@@ -66,7 +71,7 @@ class DisplayBoard:
         for rank in self.squares:
             for square in rank:
                 square.display(self.in_reverse)
-        if self.result is not None:
+        if self.finished:
             self.result.display()
         if self.promotion is not None:
             self.promotion.display()
@@ -105,7 +110,7 @@ class DisplayBoard:
  
     def handle_click(self, coordinates: tuple[int, int]) -> None:
         """Handles a mouse click."""
-        if self.result is not None:
+        if self.finished:
             self.result.to_close(coordinates)
             return
         if self.promotion is not None:
@@ -118,6 +123,9 @@ class DisplayBoard:
                 self.promotion = None
             return
         selected_square = self.get_square(coordinates)
+        if selected_square is None:
+            # Board not clicked.
+            return
         if selected_square is self.selected_square:
             self.confirm_deselect = True
             return
@@ -257,21 +265,18 @@ class DisplayBoard:
         if not any(moves for moves in self.board.current_moves.values()):
             # Not checkmate, but no legal moves i.e. stalemate.
             self.end("Stalemate", f"{TITLE} - Stalemate")
-            for file in range(FILES):
-                for rank in range(RANKS):
-                    square = self.board.get(file, rank)
-                    if (
-                        (not square.empty) and square.piece.type == Pieces.KING
-                        and square.piece.colour == self.board.turn
-                    ):
-                        self.stalemate_square = square
-                        return
+            for square in self.board:
+                if (
+                    (not square.empty) and square.piece.type == Pieces.KING
+                    and square.piece.colour == self.board.turn
+                ):
+                    self.stalemate_square = square
+                    return
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
 
     def end(self, outcome: Colour | str, title: str) -> None:
         """Common function to handle game over (win/draw)."""
-        self.finished = True
         self.result = DisplayResult(self, outcome, RESULT_WIDTH, RESULT_HEIGHT)
         pg.display.set_caption(title)
 
@@ -459,9 +464,9 @@ class PlayerInfo(pg.Rect):
         self.game.display_rendered_text(self.title, *self.title_coordinates)
 
 
-class GameEndOptions(pg.Rect):
+class GameOptions(pg.Rect):
     """
-    Ways to proceed after the game has ended, such as replaying
+    Possible game actions, such as restarting/replaying
     or exiting the app.
     """
 
@@ -476,20 +481,34 @@ class GameEndOptions(pg.Rect):
         self.height = height
         super().__init__(self.min_x, self.min_y, self.width, self.height)
     
+        self.restart_text = render_text("Restart", 25, DARK_GREY)
         self.replay_text = render_text("Replay", 25, DARK_GREY)
-        self.replay_coordinates = (
-            self.min_x + self.width // 2, self.min_y + self.height // 2)
+        self.restart_coordinates = (
+            self.min_x + 50, self.min_y + self.height // 2)
         
-        self.replay = False
+        self.exit_text = render_text("Exit", 25, DARK_GREY)
+        self.exit_coordinates = (
+            self.min_x + self.width - 50, self.min_y + self.height // 2)
+        
+        self.restart = False
 
-    def display(self) -> None:
-        """Displays the game over options."""
+    def display(self, game_over: bool) -> None:
+        """Displays the game options."""
+        restart_text = self.restart_text if not game_over else self.replay_text
         self.game.display_rendered_text(
-            self.replay_text, *self.replay_coordinates)
+            restart_text, *self.restart_coordinates)
+        self.game.display_rendered_text(self.exit_text, *self.exit_coordinates)
     
-    def handle_click(self, coordinates: tuple[int, int]) -> None:
+    def handle_click(
+        self, coordinates: tuple[int, int], game_over: bool
+    ) -> None:
         """Checks for any relevant clicks on any of the options."""
+        restart_text = self.restart_text if not game_over else self.replay_text
         if surface_clicked(
-            self.replay_text, *self.replay_coordinates, coordinates
+            restart_text, *self.restart_coordinates, coordinates
         ):
-            self.replay = True
+            self.restart = True
+        if surface_clicked(
+            self.exit_text, *self.exit_coordinates, coordinates
+        ):
+            pg.event.post(pg.event.Event(pg.QUIT))

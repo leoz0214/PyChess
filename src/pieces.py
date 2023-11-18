@@ -11,8 +11,7 @@ from utils import Colour, Pieces
 
 def load_piece_image(colour: Colour, piece: Pieces) -> pg.Surface:
     """Loads a piece image by its colour and type."""
-    directory = (
-        WHITE_PIECES_DIR if colour == Colour.WHITE else BLACK_PIECES_DIR)
+    directory = (WHITE_PIECES_DIR, BLACK_PIECES_DIR)[colour.value]
     file = directory / f"{piece.value}.png"
     image = Image.open(file).resize((PIECE_WIDTH, PIECE_WIDTH))
     with file.open("wb") as f:

@@ -29,7 +29,7 @@ class Game:
         black_info = display.PlayerInfo(
             self, Colour.BLACK, BLACK_MIN_X, BLACK_MIN_Y,
             PLAYER_INFO_WIDTH, PLAYER_INFO_HEIGHT, PLAYER_INFO_FG)
-        game_end_options = display.GameEndOptions(
+        game_options = display.GameOptions(
             self, GAME_END_MIN_X, GAME_END_MIN_Y,
             GAME_END_WIDTH, GAME_END_HEIGHT)
         while True:
@@ -46,11 +46,11 @@ class Game:
                         if event.button in (1, 3):
                             coordinates = pg.mouse.get_pos()
                             board.handle_click(coordinates)
-                            if board.result is not None:
-                                game_end_options.handle_click(coordinates)
-                                if game_end_options.replay:
-                                    # Exit current loop to replay the game.
-                                    return
+                            game_options.handle_click(
+                                coordinates, board.finished)
+                            if game_options.restart:
+                                # Exit current loop to replay the game.
+                                return
                     case _:
                         if (
                             event.type == pg.MOUSEBUTTONUP
@@ -71,8 +71,7 @@ class Game:
             board.display()
             white_info.display()
             black_info.display()
-            if board.result is not None:
-                game_end_options.display()
+            game_options.display(board.finished)
             pg.display.update()
 
     def display_text(

@@ -79,16 +79,12 @@ class Board:
         self.test_move = True
         possible_next_squares = self.get_all_moves()
         king_square = None
-        for file in range(FILES):
-            for rank in range(RANKS):
-                square = self.get(file, rank)
-                if (
-                    (not square.empty) and square.piece.type == Pieces.KING
-                    and square.piece.colour != self.turn
-                ):
-                    king_square = square
-                    break
-            if king_square is not None:
+        for square in self:
+            if (
+                (not square.empty) and square.piece.type == Pieces.KING
+                and square.piece.colour != self.turn
+            ):
+                king_square = square
                 break
         king_attacked = king_square in possible_next_squares
         self.test_move = False
@@ -98,6 +94,15 @@ class Board:
         is_checkmate = not self.get_all_moves()
         self.invert_turn()
         return king_square if is_checkmate else None
+    
+    def __iter__(self) -> None:
+        """
+        Iterates through every square from rank 1,
+        file h all the way to rank 8, file h.
+        """
+        for file in range(FILES):
+            for rank in range(RANKS):
+                yield self.get(file, rank)
     
     def get(self, file: int, rank: int) -> "Square":
         """Returns the square at a particular file and rank."""
@@ -266,14 +271,9 @@ class Board:
         """
         state = [self.turn.value]
         # Add board state.
-        for file in range(FILES):
-            for rank in range(RANKS):
-                square = self.get(file, rank)
-                if square.empty:
-                    state.append(None)
-                else:
-                    state.append(repr(square.piece))
-        # Add possible moves.
+        for square in self:
+            state.append(None if square.empty else repr(square.piece))
+        # Add possible moves. This accounts for en passant/castling rights.
         for piece, moves in self.current_moves.items():
             piece_move_state = (repr(piece),) + tuple(
                 (move.file, move.rank) for move in moves)
@@ -303,12 +303,9 @@ class Board:
     def is_insufficient_material(self) -> bool:
         """Performs a basic check to see if there is no possible checkmate."""
         # Only Kings remaining.
-        for file in range(FILES):
-            for rank in range(RANKS):
-                square = self.get(file, rank)
-                if (not square.empty) and square.piece.type != Pieces.KING:
-                    return False
-        return True
+        return all(
+            square.empty or square.piece.type == Pieces.KING
+            for square in self)
 
     def get_pawn_moves(self, square: "Square") -> list["Square"]:
         """The player selected a pawn, now get the possible moves."""
@@ -435,23 +432,19 @@ class Board:
         All pieces are checked.
         """
         moves = []
-        for file in range(FILES):
-            for rank in range(RANKS):
-                square = self.get(file, rank)
-                if (not square.empty) and square.piece.colour == self.turn:
-                    piece_moves = self.move_methods[square.piece.type](square)
-                    moves.extend(piece_moves)
+        for square in self:
+            if (not square.empty) and square.piece.colour == self.turn:
+                piece_moves = self.move_methods[square.piece.type](square)
+                moves.extend(piece_moves)
         return moves
 
     def set_moves(self) -> None:
         """Sets all possible moves for all pieces, in the dictionary."""
         self.current_moves = {}
-        for file in range(FILES):
-            for rank in range(RANKS):
-                square = self.get(file, rank)
-                if (not square.empty) and square.piece.colour == self.turn:
-                    piece_moves = self.move_methods[square.piece.type](square)
-                    self.current_moves[square.piece] = piece_moves
+        for square in self:
+            if (not square.empty) and square.piece.colour == self.turn:
+                piece_moves = self.move_methods[square.piece.type](square)
+                self.current_moves[square.piece] = piece_moves
         self.record_position()
 
 

@@ -8,7 +8,9 @@ from constants import INTER_FONT
 
 class Colour(enum.Enum):
     """The two players in chess: White and Black."""
+    # 0 represents white.
     WHITE = 0
+    # 1 represents black.
     BLACK = 1
 
 
