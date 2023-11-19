@@ -53,6 +53,7 @@ class Board:
         self.turn = Colour.WHITE
         # Performing a test move at the moment.
         self.test_move = False
+        # Moves which have been played by both colours.
         self.moves = []
         self.move_methods = {
             Pieces.PAWN: self.get_pawn_moves,
@@ -72,22 +73,26 @@ class Board:
         """The opposing colour relative to the current turn."""
         # Index 0 (white -> black), Index 1 (black -> white)
         return (Colour.BLACK, Colour.WHITE)[self.turn.value]
+
+    @property
+    def is_check(self) -> bool:
+        """Returns if the king is in check right now."""
+        king_square = self.get_king_square()
+        self.test_move = True
+        self.invert_turn()
+        opponent_moves = self.get_all_moves()
+        self.test_move = False
+        self.invert_turn()
+        return king_square in opponent_moves
     
     @property
     def checkmate_square(self) -> Union["Square", None]:
         """Returns the square of the checkmated king, else None."""
         self.test_move = True
         possible_next_squares = self.get_all_moves()
-        king_square = None
-        for square in self:
-            if (
-                (not square.empty) and square.piece.type == Pieces.KING
-                and square.piece.colour != self.turn
-            ):
-                king_square = square
-                break
-        king_attacked = king_square in possible_next_squares
         self.test_move = False
+        king_square = self.get_king_square(opponent=True)
+        king_attacked = king_square in possible_next_squares
         if not king_attacked:
             return None
         self.invert_turn()
@@ -98,11 +103,19 @@ class Board:
     def __iter__(self) -> None:
         """
         Iterates through every square from rank 1,
-        file h all the way to rank 8, file h.
+        file a all the way to rank 8, file h.
         """
-        for file in range(FILES):
-            for rank in range(RANKS):
-                yield self.get(file, rank)
+        for file, rank in product(range(FILES), range(RANKS)):
+            yield self.get(file, rank)
+
+    def get_king_square(self, opponent: bool = False) -> "Square":
+        """Identifies the king square of the current/opponent colour."""
+        for square in self:
+            if (
+                (not square.empty) and square.piece.type == Pieces.KING
+                and (square.piece.colour != self.turn) == opponent
+            ):
+                return square
     
     def get(self, file: int, rank: int) -> "Square":
         """Returns the square at a particular file and rank."""

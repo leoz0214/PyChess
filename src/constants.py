@@ -1,6 +1,8 @@
 """Constants to be used throughout the program. Improves maintainability."""
 import pathlib
 
+import pygame as pg
+
 
 # Window and program configuration.
 WIDTH = 1000
@@ -70,10 +72,20 @@ DARK_GREY = "#777777"
 # Configuration
 REVERSE_BOARD = False
 
-# Directories.
+# Directories and files.
 GAME_DIR = pathlib.Path(__file__).parent.parent
 FONT_DIR = GAME_DIR / "font"
 INTER_FONT = FONT_DIR / "Inter.ttf"
 PIECES_DIR = GAME_DIR / "pieces"
 WHITE_PIECES_DIR = PIECES_DIR / "white"
 BLACK_PIECES_DIR = PIECES_DIR / "black"
+
+AUDIO_DIR = GAME_DIR / "audio"
+# Sounds effects from chess.com.
+CAPTURE_SFX = pg.mixer.Sound(AUDIO_DIR / "capture.mp3")
+CASTLING_SFX = pg.mixer.Sound(AUDIO_DIR / "castling.mp3")
+CHECK_SFX = pg.mixer.Sound(AUDIO_DIR / "check.mp3")
+END_SFX = pg.mixer.Sound(AUDIO_DIR / "end.mp3")
+MOVE_SFX = pg.mixer.Sound(AUDIO_DIR / "move.mp3")
+PROMOTION_SFX = pg.mixer.Sound(AUDIO_DIR / "promotion.mp3")
+START_SFX = pg.mixer.Sound(AUDIO_DIR / "start.mp3")

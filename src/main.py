@@ -2,13 +2,12 @@
 import sys
 
 import pygame as pg
+pg.font.init()
+pg.mixer.init()
 
 import display
 from constants import *
 from utils import render_text, Colour
-
-
-pg.font.init()
 
 
 class Game:
@@ -32,6 +31,7 @@ class Game:
         game_options = display.GameOptions(
             self, GAME_END_MIN_X, GAME_END_MIN_Y,
             GAME_END_WIDTH, GAME_END_HEIGHT)
+        START_SFX.play()
         while True:
             self.clock.tick(FPS)
             self.window.fill(BACKGROUND_COLOUR)

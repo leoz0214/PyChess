@@ -274,11 +274,20 @@ class DisplayBoard:
                     return
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
+        is_capture = (not to_before.empty) or is_en_passant
+        is_check = self.board.is_check
+        move_sfx = (
+            CHECK_SFX if is_check
+            else CASTLING_SFX if is_castling
+            else PROMOTION_SFX if is_promotion
+            else CAPTURE_SFX if is_capture else MOVE_SFX)
+        move_sfx.play()
 
     def end(self, outcome: Colour | str, title: str) -> None:
         """Common function to handle game over (win/draw)."""
         self.result = DisplayResult(self, outcome, RESULT_WIDTH, RESULT_HEIGHT)
         pg.display.set_caption(title)
+        END_SFX.play()
 
 
 class DisplaySquare(pg.Rect):
