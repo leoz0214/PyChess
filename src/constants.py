@@ -42,7 +42,8 @@ OUTCOME_TEXT_SIZES = {
     "Stalemate": 50,
     "Fivefold Repetition": 30,
     "75 Move Rule": 40,
-    "Insufficient Material": 30
+    "Insufficient Material": 30,
+    "Resignation": 50
 }
 
 INSIGNIFICANT_DRAG_RADIUS = 5

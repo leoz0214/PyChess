@@ -48,6 +48,8 @@ class Game:
                             board.handle_click(coordinates)
                             game_options.handle_click(
                                 coordinates, board.finished)
+                            white_info.handle_click(coordinates, board)
+                            black_info.handle_click(coordinates, board)
                             if game_options.restart:
                                 # Exit current loop to replay the game.
                                 return
@@ -69,8 +71,8 @@ class Game:
                         elif board.drag_coordinates is not None:
                             board.handle_drop()
             board.display()
-            white_info.display()
-            black_info.display()
+            white_info.display(board.finished)
+            black_info.display(board.finished)
             game_options.display(board.finished)
             pg.display.update()
 

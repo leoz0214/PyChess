@@ -282,10 +282,19 @@ class DisplayBoard:
             else PROMOTION_SFX if is_promotion
             else CAPTURE_SFX if is_capture else MOVE_SFX)
         move_sfx.play()
+    
+    def resign(self, colour: Colour) -> None:
+        """The current player resigns."""
+        winner = (Colour.WHITE, Colour.BLACK)[not colour.value]
+        title = f"{TITLE} - {('White', 'Black')[winner.value]} wins"
+        self.end(winner, title, resignation=True)
 
-    def end(self, outcome: Colour | str, title: str) -> None:
+    def end(
+        self, outcome: Colour | str, title: str, resignation: bool = False
+    ) -> None:
         """Common function to handle game over (win/draw)."""
-        self.result = DisplayResult(self, outcome, RESULT_WIDTH, RESULT_HEIGHT)
+        self.result = DisplayResult(
+            self, outcome, resignation, RESULT_WIDTH, RESULT_HEIGHT)
         pg.display.set_caption(title)
         END_SFX.play()
 
@@ -351,14 +360,17 @@ class DisplayResult(pg.Rect):
 
     def __init__(
         self, board: DisplayBoard, outcome: Colour | str,
-        width: int, height: int
+        resignation: bool, width: int, height: int
     ) -> None:
         self.board = board
         self.width = width
         self.height = height
         self.left = self.board.min_x + (self.board.width - self.width) // 2
         self.top = self.board.min_y + (self.board.height - self.height) // 2
-        outcome_text = "Checkmate" if isinstance(outcome, Colour) else outcome
+        if isinstance(outcome, Colour):
+            outcome_text = "Resignation" if resignation else "Checkmate"
+        else:
+            outcome_text = outcome
         outcome_size = OUTCOME_TEXT_SIZES[outcome_text]
         self.outcome_textbox = render_text(outcome_text, outcome_size, GREY)
         info_text, colour = {
@@ -462,15 +474,32 @@ class PlayerInfo(pg.Rect):
         super().__init__(self.min_x, self.min_y, width, height)
 
         self.title = render_text(
-            ("White", "Black")[self.colour.value], 25, self.fg)
+            ("White", "Black")[self.colour.value], 35, self.fg)
         self.title_coordinates = (
-            self.min_x + self.width // 2, self.min_y + 25)
+            self.min_x + self.width // 2, self.min_y + 35)
+        self.resign_text = render_text("Resign", 25, self.fg)
+        self.resign_coordinates = (
+            self.min_x + self.width // 2, self.min_y + self.height - 25)
     
-    def display(self) -> None:
+    def display(self, finished: bool) -> None:
         """Displays the player information section."""
         bg = WHITE if self.colour == Colour.WHITE else BLACK
         pg.draw.rect(self.game.window, bg, self, border_radius=10)
         self.game.display_rendered_text(self.title, *self.title_coordinates)
+        if not finished:
+            self.game.display_rendered_text(
+                self.resign_text, *self.resign_coordinates)
+    
+    def handle_click(
+        self, coordinates: tuple[int, int], board: DisplayBoard
+    ) -> None:
+        """Handles a click."""
+        if board.finished:
+            return
+        if surface_clicked(
+            self.resign_text, *self.resign_coordinates, coordinates
+        ):
+            board.resign(self.colour)
 
 
 class GameOptions(pg.Rect):
