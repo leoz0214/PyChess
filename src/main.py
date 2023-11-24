@@ -71,8 +71,8 @@ class Game:
                         elif board.drag_coordinates is not None:
                             board.handle_drop()
             board.display()
-            white_info.display(board.finished)
-            black_info.display(board.finished)
+            white_info.display(board)
+            black_info.display(board)
             game_options.display(board.finished)
             pg.display.update()
 

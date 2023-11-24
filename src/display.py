@@ -52,6 +52,8 @@ class DisplayBoard:
         self.checkmate_square = None
         self.stalemate_square = None
         self.possible_moves = []
+        self.can_claim_draw = False
+        self.accept_draw_active = False
 
     @property
     def in_reverse(self) -> bool:
@@ -282,7 +284,30 @@ class DisplayBoard:
             else PROMOTION_SFX if is_promotion
             else CAPTURE_SFX if is_capture else MOVE_SFX)
         move_sfx.play()
+        # Updates the can claim draw state. An optional draw is allowed
+        # if 3 fold repetition or 50 move rule is reached.
+        self.can_claim_draw = (
+            self.board.is_nfold_repetition(3) or self.board.is_nmove_rule(50))
+        self.accept_draw_active = False
     
+    def draw(self) -> None:
+        """
+        The current player has decided to initiate a draw,
+        which is either forced or must be agreed by the opponent.
+        """
+        if self.accept_draw_active:
+            # Mutual Draw by both players.
+            self.end("Mutual", f"{TITLE} - Mutual Draw")
+            return
+        if self.board.is_nfold_repetition(3):
+            self.end("Threefold Repetition", f"{TITLE} - Threefold Repetition")  
+            return
+        if self.board.is_nmove_rule(50):
+            self.end("50 Move Rule", f"{TITLE} - 50 Move Rule")
+            return
+        # Pending opponent acceptance.
+        self.accept_draw_active = True
+        
     def resign(self, colour: Colour) -> None:
         """The current player resigns."""
         winner = (Colour.WHITE, Colour.BLACK)[not colour.value]
@@ -477,18 +502,35 @@ class PlayerInfo(pg.Rect):
             ("White", "Black")[self.colour.value], 35, self.fg)
         self.title_coordinates = (
             self.min_x + self.width // 2, self.min_y + 35)
-        self.resign_text = render_text("Resign", 25, self.fg)
+        self.request_draw_text = render_text("Request Draw", 15, self.fg)
+        self.claim_draw_text = render_text("Claim Draw", 15, self.fg)
+        self.accept_draw_text = render_text("Accept Draw", 15, self.fg)
+        self.draw_text = None
+        self.draw_coordinates = (
+            self.min_x + self.width // 2, self.min_y + self.height - 45)
+        self.resign_text = render_text("Resign", 15, self.fg)
         self.resign_coordinates = (
-            self.min_x + self.width // 2, self.min_y + self.height - 25)
+            self.min_x + self.width // 2, self.min_y + self.height - 15)
     
-    def display(self, finished: bool) -> None:
+    def display(self, board: DisplayBoard) -> None:
         """Displays the player information section."""
         bg = WHITE if self.colour == Colour.WHITE else BLACK
         pg.draw.rect(self.game.window, bg, self, border_radius=10)
         self.game.display_rendered_text(self.title, *self.title_coordinates)
-        if not finished:
+        if not board.finished:
             self.game.display_rendered_text(
                 self.resign_text, *self.resign_coordinates)
+            if self.colour == board.board.turn:
+                if not board.accept_draw_active:
+                    self.draw_text = (
+                        self.claim_draw_text
+                        if board.can_claim_draw else self.request_draw_text)
+                    self.game.display_rendered_text(
+                        self.draw_text, *self.draw_coordinates)
+            elif board.accept_draw_active:
+                self.draw_text = self.accept_draw_text
+                self.game.display_rendered_text(
+                    self.draw_text, *self.draw_coordinates)
     
     def handle_click(
         self, coordinates: tuple[int, int], board: DisplayBoard
@@ -500,6 +542,14 @@ class PlayerInfo(pg.Rect):
             self.resign_text, *self.resign_coordinates, coordinates
         ):
             board.resign(self.colour)
+        if self.draw_text is not None and surface_clicked(
+            self.draw_text, *self.draw_coordinates, coordinates
+        ):
+            if self.colour == board.board.turn:
+                if not board.accept_draw_active:
+                    board.draw()
+            elif board.accept_draw_active:
+                board.draw()
 
 
 class GameOptions(pg.Rect):
