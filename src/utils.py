@@ -24,6 +24,15 @@ class Pieces(enum.Enum):
     KING = "king"
 
 
+PIECE_POINTS = {
+    Pieces.PAWN: 1,
+    Pieces.KNIGHT: 3,
+    Pieces.BISHOP: 3,
+    Pieces.ROOK: 5,
+    Pieces.QUEEN: 9
+}
+
+
 def render_text(text: str, size: int, fg: str) -> pg.Surface:
     """Returns the text surface."""
     font = pg.font.Font(INTER_FONT, size)

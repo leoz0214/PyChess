@@ -11,7 +11,7 @@ from typing import Iterable, Union
 
 from constants import FILES, RANKS
 from pieces import Piece, Pawn, Knight, Bishop, Rook, Queen, King
-from utils import Colour, Pieces
+from utils import Colour, Pieces, PIECE_POINTS
 
 
 @dataclass
@@ -63,6 +63,16 @@ class Board:
             Pieces.QUEEN: self.get_queen_moves,
             Pieces.KING: self.get_king_moves
         }
+        # Captures which have been made.
+        self.captured = {
+            colour: dict.fromkeys(
+                (Pieces.PAWN, Pieces.KNIGHT,
+                    Pieces.BISHOP, Pieces.ROOK, Pieces.QUEEN), 0)
+            for colour in (Colour.WHITE, Colour.BLACK)
+        }
+        # Current total pieces points.
+        self.piece_points = {}
+        self.set_piece_points()
         # Tracks the number of times unique positions have been seen
         # to allow for n-fold repetition detection.
         self.position_counts = {}
@@ -137,6 +147,11 @@ class Board:
             is_castling, is_en_passant, is_promotion)
         self.moves.append(move)
     
+    def add_capture(self, piece: Piece) -> None:
+        """Registers a piece to have been captured."""
+        piece_type = piece.type if not piece.promoted else Pieces.PAWN
+        self.captured[piece.colour][piece_type] += 1
+    
     def legal_move(self, square: "Square", move: "Square") -> bool:
         """
         Checks a move is legal (does not lead to King capture).
@@ -199,7 +214,9 @@ class Board:
         return (
             previous_move.from_before.piece.type == Pieces.PAWN
             and previous_move.from_before.file == move.file
-            and abs(previous_move.from_before.rank - rank) == 2)
+            and previous_move.to_before.rank == rank
+            and abs(previous_move.from_before.rank
+                - previous_move.to_before.rank) == 2)
 
     def is_promotion(self, square: "Square", move: "Square") -> bool:
         """Check if a move is a pawn promotion."""
@@ -459,6 +476,15 @@ class Board:
                 piece_moves = self.move_methods[square.piece.type](square)
                 self.current_moves[square.piece] = piece_moves
         self.record_position()
+    
+    def set_piece_points(self) -> None:
+        """Sets the number of points of material each player currently has."""
+        self.piece_points = dict.fromkeys((Colour.WHITE, Colour.BLACK), 0)
+        for square in self:
+            if square.empty:
+                continue
+            points = PIECE_POINTS.get(square.piece.type, 0)
+            self.piece_points[square.piece.colour] += points
 
 
 class Square:

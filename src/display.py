@@ -10,7 +10,7 @@ import pygame as pg
 import main
 from board import Board, Square
 from constants import *
-from pieces import Piece, Queen, Rook, Bishop, Knight
+from pieces import Piece, Queen, Rook, Bishop, Knight, load_piece_image
 from utils import Colour, Pieces, render_text, surface_clicked, in_rectangle
 
 
@@ -212,6 +212,7 @@ class DisplayBoard:
             # Performs the special en passant capture.
             en_passant_victim = self.board.get(
                 to_before.file, from_before.rank)
+            self.board.add_capture(en_passant_victim.piece)
             en_passant_victim.piece = None
 
         if is_promotion:
@@ -233,6 +234,9 @@ class DisplayBoard:
             new_rook_square.piece = rook_square.piece
             rook_square.piece = None
 
+        if (not to_before.empty) and to_before.piece.colour != self.board.turn:
+            self.board.add_capture(to_before.piece)
+
         self.selected_square.piece = None
         from_after = self.selected_square.copy()
         to_after = square.copy()
@@ -243,6 +247,8 @@ class DisplayBoard:
         self.board.add_move(
             from_before, to_before, from_after, to_after,
             is_en_passant, is_promotion, is_castling)
+        self.board.set_piece_points()
+
         self.checkmate_square = self.board.checkmate_square
         if self.checkmate_square is not None:
             title = (
@@ -318,6 +324,7 @@ class DisplayBoard:
         self, outcome: Colour | str, title: str, resignation: bool = False
     ) -> None:
         """Common function to handle game over (win/draw)."""
+        self.deselect()
         self.result = DisplayResult(
             self, outcome, resignation, RESULT_WIDTH, RESULT_HEIGHT)
         pg.display.set_caption(title)
@@ -447,7 +454,7 @@ class PromotionMenu(pg.Rect):
         super().__init__(self.left, self.top, self.width, self.height)
         # Pairs of pieces and their TOP LEFT CORNER co-ordinate.
         self.pieces = [
-            (piece(colour), (
+            (piece(colour, True), (
                 self.centerx + PIECE_WIDTH * (i - 2), self.top + 50))
             for i, piece in enumerate((Queen, Rook, Bishop, Knight))]
         self.selection = None
@@ -502,6 +509,12 @@ class PlayerInfo(pg.Rect):
             ("White", "Black")[self.colour.value], 35, self.fg)
         self.title_coordinates = (
             self.min_x + self.width // 2, self.min_y + 35)
+
+        self.captured_pieces_info = CapturedPiecesDisplay(
+            self.game, self.colour,
+            self.min_x + self.width // 2 - CAPTURED_PIECES_WIDTH // 2,
+            self.min_y + 60, CAPTURED_PIECES_WIDTH, CAPTURED_PIECES_HEIGHT)   
+
         self.request_draw_text = render_text("Request Draw", 15, self.fg)
         self.claim_draw_text = render_text("Claim Draw", 15, self.fg)
         self.accept_draw_text = render_text("Accept Draw", 15, self.fg)
@@ -517,6 +530,7 @@ class PlayerInfo(pg.Rect):
         bg = WHITE if self.colour == Colour.WHITE else BLACK
         pg.draw.rect(self.game.window, bg, self, border_radius=10)
         self.game.display_rendered_text(self.title, *self.title_coordinates)
+        self.captured_pieces_info.display(board.board)
         if not board.finished:
             self.game.display_rendered_text(
                 self.resign_text, *self.resign_coordinates)
@@ -600,3 +614,50 @@ class GameOptions(pg.Rect):
             self.exit_text, *self.exit_coordinates, coordinates
         ):
             pg.event.post(pg.event.Event(pg.QUIT))
+
+
+class CapturedPiecesDisplay(pg.Rect):
+    """
+    Displays the captured opponent pieces in the player info box
+    and the advantage, if applicable.
+    """
+
+    def __init__(
+        self, game: main.Game, colour: Colour, min_x: int, min_y: int,
+        width: int, height: int
+    ) -> None:
+        self.game = game
+        self.colour = colour
+        self.opponent = (Colour.WHITE, Colour.BLACK)[not colour.value]
+        self.min_x = min_x
+        self.min_y = min_y
+        self.width = width
+        self.height = height
+        self.images = {
+            piece: load_piece_image(self.opponent, piece, True)
+            for piece in (Pieces.PAWN, Pieces.KNIGHT,
+                Pieces.BISHOP, Pieces.ROOK, Pieces.QUEEN)
+        }
+        super().__init__(self.min_x, self.min_y, width, height)
+
+    def display(self, board: Board) -> None:
+        """Displays the result."""
+        pieces = 0
+        overall_piece_width = SMALL_PIECE_WIDTH - SMALL_PIECE_OVERLAP
+        for piece_type, count in board.captured[self.opponent].items():
+            for _ in range(count):
+                row, column = divmod(pieces, CAPTURED_PIECES_PER_ROW)
+                coordinates = (
+                    self.min_x + column * overall_piece_width,
+                    self.min_y + row * SMALL_PIECE_WIDTH)
+                self.game.window.blit(self.images[piece_type], coordinates)
+                pieces += 1
+        piece_points = board.piece_points
+        points_ahead = piece_points[self.colour] - piece_points[self.opponent]
+        if points_ahead > 0:
+            row, column = divmod(pieces, CAPTURED_PIECES_PER_ROW)
+            coordinates = (
+                self.min_x + column * overall_piece_width + 5,
+                self.min_y + row * SMALL_PIECE_WIDTH)
+            self.game.display_text(
+                f"+{points_ahead}", *coordinates, DARK_GREY, 17, centre=False)
