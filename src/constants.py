@@ -10,6 +10,47 @@ HEIGHT = 600
 TITLE = "PyChess"
 FPS = 60
 
+# Home screen configuration
+HOME_SCREEN_FG = "#777777"
+TIME_CONTROLS_MIN_X = 200
+TIME_CONTROLS_MIN_Y = 150
+TIME_CONTROLS_WIDTH = 600
+TIME_CONTROLS_HEIGHT = 150
+SELECTED_TIME_CONTROL_COLOUR = "#03a9fc"
+# Format: (seconds, added seconds / move): display
+TIME_CONTROLS = {
+    (float("inf"), 0): "None",
+    (30, 0): "30 sec",
+    (60, 0): "1 min",
+    (180, 0): "3 min",
+    (300, 0): "5 min",
+    (600, 0): "10 min",
+    (1800, 0): "30 min",
+    (3600, 0): "60 min",
+    (5400, 0): "90 min",
+    (7200, 0): "2 hr",
+    (60, 1): "1 | 1",
+    (120, 1): "2 | 1",
+    (180, 2): "3 | 2",
+    (300, 5): "5 | 5",
+    (900, 10): "15 | 10"
+}
+TIME_CONTROL_WIDTH = 85
+TIME_CONTROL_HEIGHT = 27
+TIME_CONTROLS_PER_ROW = 5
+
+SETTINGS_MIN_X = 200
+SETTINGS_MIN_Y = 325
+SETTINGS_WIDTH = 600
+SETTINGS_HEIGHT = 150
+SELECTED_SETTING_COLOUR = "#03a9fc"
+# Setting identifiers and the display prompt.
+SETTINGS = {
+    "reverse": ("Automatically flip board", True)
+}
+SETTING_WIDTH = 350
+SETTING_HEIGHT = 30
+
 # General chess board information.
 RANKS = 8 # rows on a chess board.
 FILES = 8 # columns on a chess board.

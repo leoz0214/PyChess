@@ -6,6 +6,7 @@ pg.font.init()
 pg.mixer.init()
 
 import display
+import home
 from constants import *
 from utils import render_text, Colour
 
@@ -16,6 +17,25 @@ class Game:
     def __init__(self) -> None:
         self.window = pg.display.set_mode((WIDTH, HEIGHT))
         self.clock = pg.time.Clock()
+    
+    def home(self) -> None:
+        """Displays the home screen."""
+        pg.display.set_caption(TITLE)
+        self.home_display = home.Home(self)
+        while True:
+            self.clock.tick(FPS)
+            events = pg.event.get()
+            for event in events:
+                match event.type:
+                    case pg.QUIT:
+                        pg.quit()
+                        sys.exit(0)
+                    case pg.MOUSEBUTTONDOWN:
+                        if event.button in (1, 3):
+                            coordinates = pg.mouse.get_pos()
+                            self.home_display.handle_click(coordinates)
+            self.home_display.display()
+            pg.display.update()
     
     def start(self) -> None:
         """Starts the game, including the main loop."""
@@ -85,7 +105,7 @@ class Game:
         self.display_rendered_text(textbox, x, y, centre)
     
     def display_rendered_text(
-        self, textbox: pg.Surface, x: int, y: int, centre: bool = True
+        self, textbox: pg.Surface, x: int, y: int, centre: bool = True,
     ) -> None:
         """
         Displays a text surface.
@@ -104,6 +124,7 @@ class Game:
 if __name__ == "__main__":
     pg.init()
     game = Game()
+    game.home()
     # The infinite loop here allows for replays/rematches.
-    while True:
-        game.start()
+    # while True:
+    #     game.start()
