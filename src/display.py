@@ -3,10 +3,12 @@ Handles displaying the chess board and other game features
 on the window of the program, not the actual internal data structures.
 """
 from itertools import cycle
-from math import hypot
+from math import hypot, ceil
+from timeit import default_timer as timer
 
 import pygame as pg
 
+import home
 import main
 from board import Board, Square
 from constants import *
@@ -18,7 +20,8 @@ class DisplayBoard:
     """The chess board displayed on the screen."""
 
     def __init__(
-        self, game: "main.Game", min_x: int, min_y: int, square_width: int
+        self, game: "main.Game", min_x: int, min_y: int, square_width: int,
+        settings: home.Settings
     ) -> None:
         self.game = game
         self.window = self.game.window
@@ -29,6 +32,7 @@ class DisplayBoard:
         self.square_width = square_width
         self.width = self.square_width * FILES
         self.height = self.width
+        self.settings = settings
         self.board = Board()
 
         self.squares = []
@@ -55,10 +59,14 @@ class DisplayBoard:
         self.can_claim_draw = False
         self.accept_draw_active = False
 
+        self.time_left = dict.fromkeys(
+            (Colour.WHITE, Colour.BLACK), self.settings.seconds)
+        self.last_timestamp = timer()
+
     @property
     def in_reverse(self) -> bool:
         """Board display is inverted."""
-        return REVERSE_BOARD and self.board.turn == Colour.BLACK
+        return self.settings.reverse and self.board.turn == Colour.BLACK
     
     @property
     def finished(self) -> bool:
@@ -255,6 +263,7 @@ class DisplayBoard:
                 f"{TITLE} - {('White', 'Black')[self.board.turn.value]} wins")
             self.end(self.board.turn, title)
             return
+        self.time_left[self.board.turn] += self.settings.added_seconds
         self.board.invert_turn()
         self.board.set_moves()
         if self.board.is_nfold_repetition(5):
@@ -319,16 +328,36 @@ class DisplayBoard:
         winner = (Colour.WHITE, Colour.BLACK)[not colour.value]
         title = f"{TITLE} - {('White', 'Black')[winner.value]} wins"
         self.end(winner, title, resignation=True)
+    
+    def timeout(self) -> None:
+        """The current player has run out of time."""
+        winner = (Colour.WHITE, Colour.BLACK)[not self.board.turn.value]
+        title = f"{TITLE} - {('White', 'Black')[winner.value]} wins"
+        self.end(winner, title, timeout=True)
 
     def end(
-        self, outcome: Colour | str, title: str, resignation: bool = False
+        self, outcome: Colour | str, title: str, resignation: bool = False,
+        timeout: bool = False
     ) -> None:
         """Common function to handle game over (win/draw)."""
         self.deselect()
         self.result = DisplayResult(
-            self, outcome, resignation, RESULT_WIDTH, RESULT_HEIGHT)
+            self, outcome, resignation, timeout, RESULT_WIDTH, RESULT_HEIGHT)
         pg.display.set_caption(title)
         END_SFX.play()
+
+    def register_time(self) -> None:
+        """
+        Register time passed since last check
+        If time runs out, the other player wins, unless a draw by
+        timeout vs insufficient material occurs.
+        """
+        timestamp = timer()
+        self.time_left[self.board.turn] -= (timestamp - self.last_timestamp)
+        self.last_timestamp = timestamp
+        if self.time_left[self.board.turn] <= 0:
+            self.time_left[self.board.turn] = 0
+            self.timeout()
 
 
 class DisplaySquare(pg.Rect):
@@ -392,7 +421,7 @@ class DisplayResult(pg.Rect):
 
     def __init__(
         self, board: DisplayBoard, outcome: Colour | str,
-        resignation: bool, width: int, height: int
+        resignation: bool, timeout: bool, width: int, height: int
     ) -> None:
         self.board = board
         self.width = width
@@ -400,7 +429,9 @@ class DisplayResult(pg.Rect):
         self.left = self.board.min_x + (self.board.width - self.width) // 2
         self.top = self.board.min_y + (self.board.height - self.height) // 2
         if isinstance(outcome, Colour):
-            outcome_text = "Resignation" if resignation else "Checkmate"
+            outcome_text = (
+                "Resignation" if resignation
+                else "Timeout" if timeout else "Checkmate")
         else:
             outcome_text = outcome
         outcome_size = OUTCOME_TEXT_SIZES[outcome_text]
@@ -513,7 +544,10 @@ class PlayerInfo(pg.Rect):
         self.captured_pieces_info = CapturedPiecesDisplay(
             self.game, self.colour,
             self.min_x + self.width // 2 - CAPTURED_PIECES_WIDTH // 2,
-            self.min_y + 60, CAPTURED_PIECES_WIDTH, CAPTURED_PIECES_HEIGHT)   
+            self.min_y + 60, CAPTURED_PIECES_WIDTH, CAPTURED_PIECES_HEIGHT)
+
+        self.time_coordinates = (
+            self.min_x + self.width // 2, self.min_y + 225)
 
         self.request_draw_text = render_text("Request Draw", 15, self.fg)
         self.claim_draw_text = render_text("Claim Draw", 15, self.fg)
@@ -525,12 +559,29 @@ class PlayerInfo(pg.Rect):
         self.resign_coordinates = (
             self.min_x + self.width // 2, self.min_y + self.height - 15)
     
+    def get_time_display(self, seconds: float) -> str:
+        """Returns the time display based on the number of seconds."""
+        if seconds == float("inf"):
+            return "No time limit"
+        hours = int(seconds // 3600)
+        minutes = int(seconds // 60 % 60)
+        seconds = seconds % 60
+        if hours:
+            return ":".join(
+                str(part).zfill(2) for part in (hours, minutes, int(seconds)))
+        elif minutes:
+            return f"{str(minutes).zfill(2)}:{str(int(seconds)).zfill(2)}"
+        return f"{round(ceil(seconds * 10) / 10, 1)}s"
+    
     def display(self, board: DisplayBoard) -> None:
         """Displays the player information section."""
         bg = WHITE if self.colour == Colour.WHITE else BLACK
         pg.draw.rect(self.game.window, bg, self, border_radius=10)
         self.game.display_rendered_text(self.title, *self.title_coordinates)
         self.captured_pieces_info.display(board.board)
+        time_display = self.get_time_display(board.time_left[self.colour])
+        self.game.display_text(
+            time_display, *self.time_coordinates, self.fg, 25)
         if not board.finished:
             self.game.display_rendered_text(
                 self.resign_text, *self.resign_coordinates)
@@ -586,19 +637,24 @@ class GameOptions(pg.Rect):
         self.restart_text = render_text("Restart", 25, DARK_GREY)
         self.replay_text = render_text("Replay", 25, DARK_GREY)
         self.restart_coordinates = (
-            self.min_x + 50, self.min_y + self.height // 2)
+            self.min_x + 50, self.centery)
+        
+        self.home_text = render_text("Home", 25, DARK_GREY)
+        self.home_coordinates = (self.centerx, self.centery)
         
         self.exit_text = render_text("Exit", 25, DARK_GREY)
         self.exit_coordinates = (
-            self.min_x + self.width - 50, self.min_y + self.height // 2)
+            self.right - 50, self.centery)
         
         self.restart = False
+        self.home = False
 
     def display(self, game_over: bool) -> None:
         """Displays the game options."""
         restart_text = self.restart_text if not game_over else self.replay_text
         self.game.display_rendered_text(
             restart_text, *self.restart_coordinates)
+        self.game.display_rendered_text(self.home_text, *self.home_coordinates)
         self.game.display_rendered_text(self.exit_text, *self.exit_coordinates)
     
     def handle_click(
@@ -610,6 +666,10 @@ class GameOptions(pg.Rect):
             restart_text, *self.restart_coordinates, coordinates
         ):
             self.restart = True
+        if surface_clicked(
+            self.home_text, *self.home_coordinates, coordinates
+        ):
+            self.home = True
         if surface_clicked(
             self.exit_text, *self.exit_coordinates, coordinates
         ):

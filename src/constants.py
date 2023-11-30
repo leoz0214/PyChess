@@ -87,7 +87,8 @@ OUTCOME_TEXT_SIZES = {
     "50 Move Rule": 40,
     "Insufficient Material": 30,
     "Resignation": 50,
-    "Mutual": 50
+    "Mutual": 50,
+    "Timeout": 50
 }
 
 INSIGNIFICANT_DRAG_RADIUS = 5
@@ -119,9 +120,6 @@ WHITE = "white"
 BLACK = "black"
 GREY = "grey"
 DARK_GREY = "#777777"
-
-# Configuration
-REVERSE_BOARD = False
 
 # Directories and files.
 GAME_DIR = pathlib.Path(__file__).parent.parent

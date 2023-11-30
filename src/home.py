@@ -2,11 +2,21 @@
 Module which handles the home screen of the game, where the players
 can then proceed to start a game with particular settings.
 """
+from dataclasses import dataclass
+
 import pygame as pg
 
 import main
 from constants import *
 from utils import render_text, surface_clicked
+
+
+@dataclass
+class Settings:
+    """Bundles togeteher all the settings."""
+    seconds: int | float
+    added_seconds: int
+    reverse: bool
 
 
 class Home(pg.Rect):
@@ -28,21 +38,36 @@ class Home(pg.Rect):
             self.game, self, TIME_CONTROLS_MIN_X, TIME_CONTROLS_MIN_Y,
             TIME_CONTROLS_WIDTH, TIME_CONTROLS_HEIGHT,
             SELECTED_TIME_CONTROL_COLOUR)
-        self.settings = Settings(
+        self.settings_box = SettingsBox(
             self.game, self, SETTINGS_MIN_X, SETTINGS_MIN_Y,
             SETTINGS_WIDTH, SETTINGS_HEIGHT)
+
+        self.start = render_text("Start", 50, self.fg)
+        self.start_coordinates = (self.width // 2, 500)
+        self.started = False
     
     def display(self) -> None:
         """Displays the home screen entirely."""
         pg.draw.rect(self.game.window, BACKGROUND_COLOUR, self)
         self.game.display_rendered_text(self.title, *self.title_coordinates)
         self.time_controls.display()
-        self.settings.display()
+        self.settings_box.display()
+        self.game.display_rendered_text(self.start, *self.start_coordinates)
     
     def handle_click(self, coordinates: tuple[int, int]) -> None:
         """Handles clicks for any of the settings."""
         self.time_controls.handle_click(coordinates)
-        self.settings.handle_click(coordinates)
+        self.settings_box.handle_click(coordinates)
+        if surface_clicked(self.start, *self.start_coordinates, coordinates):
+            self.started = True
+    
+    @property
+    def settings(self) -> Settings:
+        """Returns the currently set settings."""
+        seconds = self.time_controls.selected.seconds
+        added_seconds = self.time_controls.selected.added_seconds
+        reverse = self.settings_box.settings["reverse"].on
+        return Settings(seconds, added_seconds, reverse)
 
 
 class TimeControl(pg.Rect):
@@ -189,7 +214,7 @@ class Setting(pg.Rect):
             self.on = False
 
 
-class Settings(pg.Rect):
+class SettingsBox(pg.Rect):
     """
     Allows players to adjust various other game settings other
     than the core one - time control. ON/OFF.

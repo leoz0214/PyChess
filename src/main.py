@@ -8,7 +8,7 @@ pg.mixer.init()
 import display
 import home
 from constants import *
-from utils import render_text, Colour
+from utils import render_text, Colour, Action
 
 
 class Game:
@@ -17,12 +17,16 @@ class Game:
     def __init__(self) -> None:
         self.window = pg.display.set_mode((WIDTH, HEIGHT))
         self.clock = pg.time.Clock()
+        # Persistent home screen - allow same settings to be
+        # seen whenever returning to the home screen.
+        self.home_display = home.Home(self)
     
     def home(self) -> None:
         """Displays the home screen."""
         pg.display.set_caption(TITLE)
-        self.home_display = home.Home(self)
-        while True:
+        # Set started clicked to false.
+        self.home_display.started = False
+        while not self.home_display.started:
             self.clock.tick(FPS)
             events = pg.event.get()
             for event in events:
@@ -36,12 +40,21 @@ class Game:
                             self.home_display.handle_click(coordinates)
             self.home_display.display()
             pg.display.update()
+        settings = self.home_display.settings
+        while True:
+            match self.start(settings):
+                case Action.RESTART:
+                    # Simply reload the game.
+                    continue
+                case Action.HOME:
+                    # Exit current home function.
+                    return
     
-    def start(self) -> None:
+    def start(self, settings: "home.Settings") -> Action:
         """Starts the game, including the main loop."""
         pg.display.set_caption(TITLE)
         board = display.DisplayBoard(
-            self, BOARD_MIN_X, BOARD_MIN_Y, SQUARE_WIDTH)
+            self, BOARD_MIN_X, BOARD_MIN_Y, SQUARE_WIDTH, settings)
         white_info = display.PlayerInfo(
             self, Colour.WHITE, WHITE_MIN_X, WHITE_MIN_Y,
             PLAYER_INFO_WIDTH, PLAYER_INFO_HEIGHT, PLAYER_INFO_FG)
@@ -72,7 +85,10 @@ class Game:
                             black_info.handle_click(coordinates, board)
                             if game_options.restart:
                                 # Exit current loop to replay the game.
-                                return
+                                return Action.RESTART
+                            if game_options.home:
+                                # Go back to the main menu.
+                                return Action.HOME
                     case _:
                         if (
                             event.type == pg.MOUSEBUTTONUP
@@ -91,6 +107,8 @@ class Game:
                         elif board.drag_coordinates is not None:
                             board.handle_drop()
             board.display()
+            if not board.finished:
+                board.register_time()
             white_info.display(board)
             black_info.display(board)
             game_options.display(board.finished)
@@ -124,7 +142,6 @@ class Game:
 if __name__ == "__main__":
     pg.init()
     game = Game()
-    game.home()
-    # The infinite loop here allows for replays/rematches.
-    # while True:
-    #     game.start()
+    # Allows home screen to be accessed indefinitely.
+    while True:
+        game.home()

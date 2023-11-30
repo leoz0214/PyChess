@@ -24,6 +24,12 @@ class Pieces(enum.Enum):
     KING = "king"
 
 
+class Action(enum.Enum):
+    """Possible navigation options when game is stopped."""
+    RESTART = "restart"
+    HOME = "home"
+
+
 PIECE_POINTS = {
     Pieces.PAWN: 1,
     Pieces.KNIGHT: 3,
