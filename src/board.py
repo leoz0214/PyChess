@@ -41,11 +41,11 @@ class Board:
             [
                 Square(file, 7, piece(Colour.BLACK))
                 for file, piece in enumerate(back_rank)],
-            [Square(file, 6) for file in range(FILES)],
+            [Square(file, 6, Pawn(Colour.BLACK)) for file in range(FILES)],
             *(
                 [Square(file, rank) for file in range(FILES)]
                 for rank in range(5, 1, -1)),
-            [Square(file, 1) for file in range(FILES)],
+            [Square(file, 1, Pawn(Colour.WHITE)) for file in range(FILES)],
             [
                 Square(file, 0, piece(Colour.WHITE))
                 for file, piece in enumerate(back_rank)]
@@ -390,6 +390,35 @@ class Board:
         # No evidence of impossible checkmate. Consider the game to
         # be in a playable state, continuing it.
         return False
+
+    @property
+    def is_timeout_vs_insufficient_material(self) -> bool:
+        """
+        Performs a basic check to see if a timeout vs insufficient
+        material has arisen, where the current player has run out of
+        time but the opponent cannot deliver checkmate.
+        Timeout vs insufficient material scenarios:
+        - Only King left
+        - King and only 1 Knight left
+        - King and only 1 Bishop left.
+        """
+        count = 0
+        colour = (Colour.WHITE, Colour.BLACK)[not self.turn.value]
+        for square in self:
+            if (not square.empty) and square.piece.colour == colour:
+                if square.piece.type in (
+                    Pieces.PAWN, Pieces.ROOK, Pieces.QUEEN
+                ):
+                    # A single pawn, rook or queen means not insufficient.
+                    return False
+                count += 1
+                if count == 3:
+                    # King and 2 knights/bishops OR 3 knights/bishops.
+                    # Either way not insufficient.
+                    return False
+        # Count 2 or less. King + only one bishop/knight. Insufficient.
+        return True
+        
 
     def get_pawn_moves(self, square: "Square") -> list["Square"]:
         """The player selected a pawn, now get the possible moves."""

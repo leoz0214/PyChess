@@ -88,7 +88,8 @@ OUTCOME_TEXT_SIZES = {
     "Insufficient Material": 30,
     "Resignation": 50,
     "Mutual": 50,
-    "Timeout": 50
+    "Timeout": 50,
+    "Timeout vs Insufficient Material": 20
 }
 
 INSIGNIFICANT_DRAG_RADIUS = 5

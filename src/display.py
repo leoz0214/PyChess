@@ -331,9 +331,14 @@ class DisplayBoard:
     
     def timeout(self) -> None:
         """The current player has run out of time."""
-        winner = (Colour.WHITE, Colour.BLACK)[not self.board.turn.value]
-        title = f"{TITLE} - {('White', 'Black')[winner.value]} wins"
-        self.end(winner, title, timeout=True)
+        if not self.board.is_timeout_vs_insufficient_material:
+            winner = (Colour.WHITE, Colour.BLACK)[not self.board.turn.value]
+            title = f"{TITLE} - {('White', 'Black')[winner.value]} wins"
+            self.end(winner, title, timeout=True)
+            return
+        self.end(
+            "Timeout vs Insufficient Material",
+            f"{TITLE} - Timeout vs Insufficent Material")
 
     def end(
         self, outcome: Colour | str, title: str, resignation: bool = False,
