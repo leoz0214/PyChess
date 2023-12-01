@@ -41,11 +41,11 @@ class Board:
             [
                 Square(file, 7, piece(Colour.BLACK))
                 for file, piece in enumerate(back_rank)],
-            [Square(file, 6, Pawn(Colour.BLACK)) for file in range(FILES)],
+            [Square(file, 6) for file in range(FILES)],
             *(
                 [Square(file, rank) for file in range(FILES)]
                 for rank in range(5, 1, -1)),
-            [Square(file, 1, Pawn(Colour.WHITE)) for file in range(FILES)],
+            [Square(file, 1) for file in range(FILES)],
             [
                 Square(file, 0, piece(Colour.WHITE))
                 for file, piece in enumerate(back_rank)]
@@ -331,11 +331,65 @@ class Board:
     
     @property
     def is_insufficient_material(self) -> bool:
-        """Performs a basic check to see if there is no possible checkmate."""
-        # Only Kings remaining.
-        return all(
-            square.empty or square.piece.type == Pieces.KING
-            for square in self)
+        """
+        Performs a basic check to see if there is no possible checkmate.
+        Combinations with insufficient material to checkmate include:
+        - King vs King
+        - King and bishop vs king
+        - King and knight vs king
+        - King and bishop vs king and bishop, bishops on the same colour.
+        """
+        counts = {}
+        bishop_squares = {Colour.WHITE: None, Colour.BLACK: None}
+        for colour in (Colour.WHITE, Colour.BLACK):
+            colour_counts = {}
+            for square in self:
+                if (not square.empty) and square.piece.colour == colour:
+                    if (
+                        square.piece.type in
+                            (Pieces.PAWN, Pieces.ROOK, Pieces.QUEEN)
+                    ):
+                        # A pawn suggests a possible checkmate (despite not
+                        # guaranteed, will be fine for this simple check).
+                        # A single rook/queen guarantees a possible checkmate.
+                        return False
+                    colour_counts[square.piece.type] = (
+                        colour_counts.get(square.piece.type, 0) + 1)
+                    if square.piece.type == Pieces.BISHOP:
+                        # Only record one square, since 2 or more bishops
+                        # will indeed allow for a possible checkmate so
+                        # the bishop squares will no longer matter
+                        # (only to check both bishops are dark/light).
+                        bishop_squares[colour] = square
+            counts[colour] = colour_counts
+        for colour, colour_counts in counts.items():
+            colour_pieces = sum(colour_counts.values())
+            opponent_counts = counts[
+                (Colour.WHITE, Colour.BLACK)[not colour.value]]
+            opponent_pieces = sum(opponent_counts.values())
+            if opponent_pieces == 1:
+                # Opponent only has one piece - king.
+                if colour_pieces <= 2:
+                    # If 1, Current player also only has one piece - king.
+                    # King + King = Insufficient.
+                    # If 2, King + One Knight OR Bishop = Insufficient.
+                    return True
+            if (
+                colour_pieces == 2
+                and colour_counts.get(Pieces.BISHOP) == 1
+                and opponent_pieces == 2
+                and opponent_counts.get(Pieces.BISHOP) == 1
+            ):
+                # Opponent has king and bishop.
+                is_dark = [
+                    square.file % 2 == square.rank % 2
+                    for square in bishop_squares.values()]
+                if is_dark[0] == is_dark[1]:
+                    # Bishops same colour. Checkmate not possible.
+                    return True
+        # No evidence of impossible checkmate. Consider the game to
+        # be in a playable state, continuing it.
+        return False
 
     def get_pawn_moves(self, square: "Square") -> list["Square"]:
         """The player selected a pawn, now get the possible moves."""
