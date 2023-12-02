@@ -32,6 +32,14 @@ class Move:
     promotion: bool = False
 
 
+@dataclass
+class _MoveData:
+    """Utilities for handling dummy moves internally. Not for general use."""
+    square_piece: Piece | None
+    move_piece: Piece | None
+    position_counts: dict[str, int]
+
+
 class Board:
     """Internal Chess board representation."""
 
@@ -391,6 +399,53 @@ class Board:
         # be in a playable state, continuing it.
         return False
 
+    def _make_move(
+        self, square: "Square", move: "Move",
+        promotion_piece: Piece | None = None
+    ) -> _MoveData:
+        """
+        Internal make move function for forward testing.
+        Note, can ignore en passant possibility since opponent
+        has no pawns, otherwise not insufficent material anyways.
+        Also can ignore castling due to it being impossible to
+        go from castling to instant mate when opponent only has
+        1 knight or bishop.
+        Also, for opponent, only king/knight/bishop, so again,
+        no en passant/castle possibility.
+        """
+        is_promotion = promotion_piece is not None
+        square_before = square.copy()
+        square_piece = square.piece
+        square.piece = None
+        square_after = square.copy()
+
+        move_before = move.copy()
+        move_piece = move.piece
+        move.piece = (
+            square_piece if not is_promotion
+            else promotion_piece(self.turn, promoted=True))
+        move_after = move.copy()
+
+        # Obtain current position counts.
+        position_counts = self.position_counts.copy()
+        # Record position counts to handle 5 fold reptition (very unlikely).
+        self.record_position()
+
+        self.add_move(
+            square_before, move_before, square_after, move_after,
+            False, is_promotion, False)
+        
+        return _MoveData(square_piece, move_piece, position_counts)
+
+    def _undo_move(
+        self, src: "Square", dest: "Square", move_data: _MoveData
+    ) -> None:
+        """Undos a dummy move."""
+        src.piece = move_data.square_piece
+        dest.piece = move_data.move_piece
+        self.position_counts = move_data.position_counts
+        self.moves.pop()
+
     @property
     def is_timeout_vs_insufficient_material(self) -> bool:
         """
@@ -401,6 +456,7 @@ class Board:
         - Only King left
         - King and only 1 Knight left
         - King and only 1 Bishop left.
+        Rare cases may mean 1 Knight/Bishop suffices still.
         """
         count = 0
         colour = (Colour.WHITE, Colour.BLACK)[not self.turn.value]
@@ -417,8 +473,46 @@ class Board:
                     # Either way not insufficient.
                     return False
         # Count 2 or less. King + only one bishop/knight. Insufficient.
+        # Unless there is somehow indeed a mate.
+        insuffient = True
+        for square in self:
+            if square.piece not in self.current_moves:
+                continue
+            moves = self.current_moves[square.piece]
+            # Simulates a move to see if any subsequent mates are possible.
+            for move in moves:
+                is_promotion = self.is_promotion(square, move)
+                promotion_pieces = (None,) if not is_promotion else (
+                    Knight, Bishop, Rook, Queen)
+                for promotion_piece in promotion_pieces:
+                    move_data = self._make_move(square, move, promotion_piece)
+                    self.invert_turn()
+                    # Checks move does not trigger 5-fold repetition or 75 move rule.
+                    if not (
+                        self.is_nfold_repetition(5) or self.is_nmove_rule(75)
+                    ):
+                        opponent_moves = self.get_moves()
+                        for square_ in self:
+                            # King/irrelevant piece ignored (cannot mate).
+                            if (
+                                square_.piece not in opponent_moves
+                                or square_.piece.type == Pieces.KING
+                            ):
+                                continue
+                            moves_ = opponent_moves[square_.piece]
+                            for move_ in moves_:
+                                move_data_ = self._make_move(square_, move_)
+                                if self.checkmate_square is not None:
+                                    insuffient = False
+                                self._undo_move(square_, move_, move_data_)
+                                if not insuffient:
+                                    break
+                    self._undo_move(square, move, move_data)
+                    self.invert_turn()
+                    if not insuffient:
+                        return False
+        # No simple checkmates found.
         return True
-        
 
     def get_pawn_moves(self, square: "Square") -> list["Square"]:
         """The player selected a pawn, now get the possible moves."""
@@ -551,13 +645,18 @@ class Board:
                 moves.extend(piece_moves)
         return moves
 
-    def set_moves(self) -> None:
-        """Sets all possible moves for all pieces, in the dictionary."""
-        self.current_moves = {}
+    def get_moves(self) -> dict[Piece, list["Square"]]:
+        """Gets all possible moves for all pieces."""
+        moves = {}
         for square in self:
             if (not square.empty) and square.piece.colour == self.turn:
                 piece_moves = self.move_methods[square.piece.type](square)
-                self.current_moves[square.piece] = piece_moves
+                moves[square.piece] = piece_moves
+        return moves
+
+    def set_moves(self) -> None:
+        """Sets all possible moves for all pieces, in the dictionary."""
+        self.current_moves = self.get_moves()
         self.record_position()
     
     def set_piece_points(self) -> None:
