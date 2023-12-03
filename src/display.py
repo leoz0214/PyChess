@@ -10,6 +10,7 @@ import pygame as pg
 
 import home
 import main
+import pgn
 from board import Board, Square
 from constants import *
 from pieces import Piece, Queen, Rook, Bishop, Knight, load_piece_image
@@ -367,6 +368,18 @@ class DisplayBoard:
         if self.time_left[self.board.turn] <= 0:
             self.time_left[self.board.turn] = 0
             self.timeout()
+    
+    def save_pgn(self) -> None:
+        """
+        Opens a window to allow the user to save a PGN file of the
+        completed name, including setting the
+        event name and player names (optional).
+        """
+        # Open Tkinter PGN generator window, focuses on it preventing
+        # actions to the game itself until closed. Once closed,
+        # the control returns to pygame.
+        pgn_window = pgn.PGNGenerator(self)
+        pgn_window.mainloop()
 
 
 class DisplaySquare(pg.Rect):
@@ -633,10 +646,11 @@ class GameOptions(pg.Rect):
     """
 
     def __init__(
-        self, game: "main.Game", min_x: int, min_y: int,
+        self, game: "main.Game", board: DisplayBoard, min_x: int, min_y: int,
         width: int, height: int
     ) -> None:
         self.game = game
+        self.board = board
         self.min_x = min_x
         self.min_y = min_y
         self.width = width
@@ -650,20 +664,31 @@ class GameOptions(pg.Rect):
         
         self.home_text = render_text("Home", 25, DARK_GREY)
         self.home_coordinates = (self.centerx, self.centery)
+        self.home_end_coordinates = (self.min_x + 175, self.centery)
+
+        self.save_pgn_text = render_text("Save PGN", 25, DARK_GREY)
+        self.save_pgn_coordinates = (self.right - 175, self.centery)
         
         self.exit_text = render_text("Exit", 25, DARK_GREY)
-        self.exit_coordinates = (
-            self.right - 50, self.centery)
+        self.exit_coordinates = (self.right - 50, self.centery)
         
         self.restart = False
         self.home = False
 
     def display(self, game_over: bool) -> None:
         """Displays the game options."""
+        if game_over:
+            restart_text = self.replay_text
+            home_coordinates = self.home_end_coordinates
+            self.game.display_rendered_text(
+                self.save_pgn_text, *self.save_pgn_coordinates)
+        else:
+            restart_text = self.restart_text
+            home_coordinates = self.home_coordinates
         restart_text = self.restart_text if not game_over else self.replay_text
         self.game.display_rendered_text(
             restart_text, *self.restart_coordinates)
-        self.game.display_rendered_text(self.home_text, *self.home_coordinates)
+        self.game.display_rendered_text(self.home_text, *home_coordinates)
         self.game.display_rendered_text(self.exit_text, *self.exit_coordinates)
     
     def handle_click(
@@ -675,10 +700,16 @@ class GameOptions(pg.Rect):
             restart_text, *self.restart_coordinates, coordinates
         ):
             self.restart = True
+        home_coordinates = (
+            self.home_end_coordinates if game_over else self.home_coordinates)
         if surface_clicked(
-            self.home_text, *self.home_coordinates, coordinates
+            self.home_text, *home_coordinates, coordinates
         ):
             self.home = True
+        if game_over and surface_clicked(
+            self.save_pgn_text, *self.save_pgn_coordinates, coordinates
+        ):
+            self.board.save_pgn()
         if surface_clicked(
             self.exit_text, *self.exit_coordinates, coordinates
         ):

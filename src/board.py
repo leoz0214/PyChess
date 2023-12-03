@@ -348,7 +348,7 @@ class Board:
         - King and bishop vs king and bishop, bishops on the same colour.
         """
         counts = {}
-        bishop_squares = {Colour.WHITE: None, Colour.BLACK: None}
+        bishop_squares = dict.fromkeys((Colour.WHITE, Colour.BLACK), None)
         for colour in (Colour.WHITE, Colour.BLACK):
             colour_counts = {}
             for square in self:
@@ -361,14 +361,25 @@ class Board:
                         # guaranteed, will be fine for this simple check).
                         # A single rook/queen guarantees a possible checkmate.
                         return False
-                    colour_counts[square.piece.type] = (
-                        colour_counts.get(square.piece.type, 0) + 1)
                     if square.piece.type == Pieces.BISHOP:
                         # Only record one square, since 2 or more bishops
                         # will indeed allow for a possible checkmate so
                         # the bishop squares will no longer matter
                         # (only to check both bishops are dark/light).
+                        if bishop_squares[colour] is not None:
+                            is_dark = [
+                                sq.file % 2 == sq.rank % 2
+                                for sq in (square, bishop_squares[colour])]
+                            if is_dark[0] != is_dark[1]:
+                                # Opposite coloured bishops, not insufficient.
+                                return False
+                            # Do not register bishop if same colour.
+                            # n same coloured bishops alone will have the
+                            # effect of one bishop of that colour.
+                            continue
                         bishop_squares[colour] = square
+                    colour_counts[square.piece.type] = (
+                        colour_counts.get(square.piece.type, 0) + 1)
             counts[colour] = colour_counts
         for colour, colour_counts in counts.items():
             colour_pieces = sum(colour_counts.values())
@@ -428,7 +439,7 @@ class Board:
 
         # Obtain current position counts.
         position_counts = self.position_counts.copy()
-        # Record position counts to handle 5 fold reptition (very unlikely).
+        # Record position counts to handle 5 fold repetition (very unlikely).
         self.record_position()
 
         self.add_move(
@@ -482,6 +493,7 @@ class Board:
             # Simulates a move to see if any subsequent mates are possible.
             for move in moves:
                 is_promotion = self.is_promotion(square, move)
+                # Either not a promotion move or test all 4 promotions.
                 promotion_pieces = (None,) if not is_promotion else (
                     Knight, Bishop, Rook, Queen)
                 for promotion_piece in promotion_pieces:

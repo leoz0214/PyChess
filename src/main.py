@@ -62,7 +62,7 @@ class Game:
             self, Colour.BLACK, BLACK_MIN_X, BLACK_MIN_Y,
             PLAYER_INFO_WIDTH, PLAYER_INFO_HEIGHT, PLAYER_INFO_FG)
         game_options = display.GameOptions(
-            self, GAME_END_MIN_X, GAME_END_MIN_Y,
+            self, board, GAME_END_MIN_X, GAME_END_MIN_Y,
             GAME_END_WIDTH, GAME_END_HEIGHT)
         START_SFX.play()
         while True:

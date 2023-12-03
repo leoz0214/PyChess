@@ -115,6 +115,8 @@ CAPTURED_PIECES_HEIGHT = 50
 SMALL_PIECE_WIDTH = 25
 SMALL_PIECE_OVERLAP = 5
 
+PGN_FG = "#777777"
+
 # Actual colours which can be displayed.
 RED = "red"
 WHITE = "white"
