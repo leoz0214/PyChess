@@ -11,6 +11,7 @@ import pyglet
 
 import display
 from constants import *
+from utils import Colour, PIECE_LETTERS, FILE_STRING
 
 
 # Ensure Inter font works in Tkinter.
@@ -105,7 +106,54 @@ class PGNGenerator(tk.Tk):
     
     def save(self) -> None:
         """Saves the PGN."""
-        pass    
+        moves = self.board.board.moves
+        algebraic_notation_pairs = []
+        for i in range(0, len(moves), 2):
+            pair = []
+            for move in moves[i:i+2]:
+                if move.castling:
+                    kingside = move.to_before.file == 6
+                    algebraic_notation = "O-O" if kingside else "O-O-O"
+                else:
+                    piece_letter = PIECE_LETTERS.get(
+                        move.from_before.piece.type, "")
+
+                    src_square = move.from_before
+                    src_file = FILE_STRING[src_square.file]
+                    src_rank = src_square.rank + 1
+                    
+                    dest_square = move.to_before
+                    dest_file = FILE_STRING[dest_square.file]
+                    dest_rank = dest_square.rank + 1
+
+                    capture_char = "x" if (
+                        not dest_square.empty or move.en_passant) else ""
+
+                    if move.promotion:
+                        promotion_piece_letter = PIECE_LETTERS.get(
+                            move.to_after.piece.type)
+                        promotion_string = f"={promotion_piece_letter}"
+                    else:
+                        promotion_string = ""
+                    algebraic_notation = (
+                        f"{piece_letter}{src_file}{src_rank}{capture_char}"
+                        f"{dest_file}{dest_rank}{promotion_string}")
+                if move.check:
+                    algebraic_notation += "+"
+                if move.checkmate:
+                    algebraic_notation += "#"
+                pair.append(algebraic_notation)
+            algebraic_notation_pairs.append(pair)
+        algebraic_notation_string = " ".join(
+            f"{n}. {' '.join(pair)}"
+            for n, pair in enumerate(algebraic_notation_pairs, 1))
+        print(algebraic_notation_string)
+        outcome_string = {
+            Colour.WHITE: "1-0",
+            Colour.BLACK: "0-1",
+            None: "1/2-1/2"
+        }[self.board.winner]
+        print(outcome_string)
 
 
 class PGNEntry(tk.Entry):

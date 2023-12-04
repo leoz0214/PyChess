@@ -53,6 +53,7 @@ class DisplayBoard:
         self.confirm_deselect = False
     
         self.result = None
+        self.winner = None
         self.promotion = None
         self.checkmate_square = None
         self.stalemate_square = None
@@ -253,13 +254,13 @@ class DisplayBoard:
         self.selected_square = None
         self.possible_moves.clear()
 
-        self.board.add_move(
-            from_before, to_before, from_after, to_after,
-            is_en_passant, is_promotion, is_castling)
         self.board.set_piece_points()
 
         self.checkmate_square = self.board.checkmate_square
         if self.checkmate_square is not None:
+            self.board.add_move(
+                from_before, to_before, from_after, to_after,
+                is_en_passant, is_promotion, is_castling, is_checkmate=True)
             title = (
                 f"{TITLE} - {('White', 'Black')[self.board.turn.value]} wins")
             self.end(self.board.turn, title)
@@ -267,6 +268,10 @@ class DisplayBoard:
         self.time_left[self.board.turn] += self.settings.added_seconds
         self.board.invert_turn()
         self.board.set_moves()
+        is_check = self.board.is_check
+        self.board.add_move(
+            from_before, to_before, from_after, to_after,
+            is_en_passant, is_promotion, is_castling, is_check=is_check)
         if self.board.is_nfold_repetition(5):
             # Automatic draw upon 5 repetitions.
             self.end("Fivefold Repetition", f"{TITLE} - Fivefold Repetition")    
@@ -293,7 +298,6 @@ class DisplayBoard:
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
         is_capture = (not to_before.empty) or is_en_passant
-        is_check = self.board.is_check
         move_sfx = (
             CHECK_SFX if is_check
             else CASTLING_SFX if is_castling
@@ -350,6 +354,8 @@ class DisplayBoard:
         timeout: bool = False
     ) -> None:
         """Common function to handle game over (win/draw)."""
+        if isinstance(outcome, Colour):
+            self.winner = outcome
         self.deselect()
         self.result = DisplayResult(
             self, outcome, resignation, timeout, RESULT_WIDTH, RESULT_HEIGHT)
@@ -677,7 +683,7 @@ class GameOptions(pg.Rect):
 
     def display(self, game_over: bool) -> None:
         """Displays the game options."""
-        if game_over:
+        if game_over and self.board.board.moves:
             restart_text = self.replay_text
             home_coordinates = self.home_end_coordinates
             self.game.display_rendered_text(
@@ -701,12 +707,13 @@ class GameOptions(pg.Rect):
         ):
             self.restart = True
         home_coordinates = (
-            self.home_end_coordinates if game_over else self.home_coordinates)
+            self.home_end_coordinates if game_over and self.board.board.moves
+            else self.home_coordinates)
         if surface_clicked(
             self.home_text, *home_coordinates, coordinates
         ):
             self.home = True
-        if game_over and surface_clicked(
+        if game_over and self.board.board.moves and surface_clicked(
             self.save_pgn_text, *self.save_pgn_coordinates, coordinates
         ):
             self.board.save_pgn()

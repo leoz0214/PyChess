@@ -30,6 +30,8 @@ class Move:
     castling: bool = False
     en_passant: bool = False
     promotion: bool = False
+    check: bool = False
+    checkmate: bool = False
 
 
 @dataclass
@@ -147,12 +149,14 @@ class Board:
     def add_move(
         self, from_before: "Square", to_before: "Square",
         from_after: "Square", to_after: "Square", is_en_passant: bool,
-        is_promotion: bool, is_castling: bool
+        is_promotion: bool, is_castling: bool, is_check: bool = False,
+        is_checkmate: bool = False
     ) -> None:
         """Adds a move to the list of moves in the game."""
         move = Move(
             from_before, to_before, from_after, to_after,
-            is_castling, is_en_passant, is_promotion)
+            is_castling, is_en_passant, is_promotion,
+            is_check, is_checkmate)
         self.moves.append(move)
     
     def add_capture(self, piece: Piece) -> None:

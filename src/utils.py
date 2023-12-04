@@ -39,6 +39,17 @@ PIECE_POINTS = {
 }
 
 
+PIECE_LETTERS = {
+    Pieces.KNIGHT: "N",
+    Pieces.BISHOP: "B",
+    Pieces.ROOK: "R",
+    Pieces.QUEEN: "Q",
+    Pieces.KING: "K"
+}
+
+FILE_STRING = "abcdefgh"
+
+
 def render_text(text: str, size: int, fg: str) -> pg.Surface:
     """Returns the text surface."""
     font = pg.font.Font(INTER_FONT, size)
