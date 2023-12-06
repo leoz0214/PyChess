@@ -50,6 +50,13 @@ PIECE_LETTERS = {
 FILE_STRING = "abcdefgh"
 
 
+OUTCOME_STRINGS = {
+    Colour.WHITE: "1-0",
+    Colour.BLACK: "0-1",
+    None: "1/2-1/2"
+}
+
+
 def render_text(text: str, size: int, fg: str) -> pg.Surface:
     """Returns the text surface."""
     font = pg.font.Font(INTER_FONT, size)

@@ -2,6 +2,7 @@
 Handles displaying the chess board and other game features
 on the window of the program, not the actual internal data structures.
 """
+import datetime as dt
 from itertools import cycle
 from math import hypot, ceil
 from timeit import default_timer as timer
@@ -35,6 +36,7 @@ class DisplayBoard:
         self.height = self.width
         self.settings = settings
         self.board = Board()
+        self.date_started = dt.date.today()
 
         self.squares = []
         for rank in range(RANKS - 1, -1, -1):
@@ -267,11 +269,11 @@ class DisplayBoard:
             return
         self.time_left[self.board.turn] += self.settings.added_seconds
         self.board.invert_turn()
-        self.board.set_moves()
         is_check = self.board.is_check
         self.board.add_move(
             from_before, to_before, from_after, to_after,
             is_en_passant, is_promotion, is_castling, is_check=is_check)
+        self.board.set_moves()
         if self.board.is_nfold_repetition(5):
             # Automatic draw upon 5 repetitions.
             self.end("Fivefold Repetition", f"{TITLE} - Fivefold Repetition")    
