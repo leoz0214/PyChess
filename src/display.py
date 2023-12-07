@@ -219,6 +219,9 @@ class DisplayBoard:
             self.selected_square, square, validate=False)
         from_before = self.selected_square.copy()
         to_before = square.copy()
+        is_capture = (not to_before.empty) or is_en_passant
+        source_square_notation = self.board.get_source_square_notation(
+            from_before, to_before, is_capture)
 
         if is_en_passant:
             # Performs the special en passant capture.
@@ -262,7 +265,8 @@ class DisplayBoard:
         if self.checkmate_square is not None:
             self.board.add_move(
                 from_before, to_before, from_after, to_after,
-                is_en_passant, is_promotion, is_castling, is_checkmate=True)
+                is_en_passant, is_promotion, is_castling, is_checkmate=True,
+                src_string=source_square_notation)
             title = (
                 f"{TITLE} - {('White', 'Black')[self.board.turn.value]} wins")
             self.end(self.board.turn, title)
@@ -272,7 +276,8 @@ class DisplayBoard:
         is_check = self.board.is_check
         self.board.add_move(
             from_before, to_before, from_after, to_after,
-            is_en_passant, is_promotion, is_castling, is_check=is_check)
+            is_en_passant, is_promotion, is_castling, is_check=is_check,
+            src_string=source_square_notation)
         self.board.set_moves()
         if self.board.is_nfold_repetition(5):
             # Automatic draw upon 5 repetitions.
@@ -299,7 +304,6 @@ class DisplayBoard:
                     return
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
-        is_capture = (not to_before.empty) or is_en_passant
         move_sfx = (
             CHECK_SFX if is_check
             else CASTLING_SFX if is_castling

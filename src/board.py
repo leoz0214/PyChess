@@ -11,7 +11,7 @@ from typing import Iterable, Union
 
 from constants import FILES, RANKS
 from pieces import Piece, Pawn, Knight, Bishop, Rook, Queen, King
-from utils import Colour, Pieces, PIECE_POINTS
+from utils import Colour, Pieces, PIECE_POINTS, PIECE_LETTERS, FILE_STRING
 
 
 @dataclass
@@ -32,6 +32,9 @@ class Move:
     promotion: bool = False
     check: bool = False
     checkmate: bool = False
+    # Algebraic notations (for PGN saving).
+    algebraic_notation: str = None
+    long_algebraic_notation: str = None
 
 
 @dataclass
@@ -150,13 +153,55 @@ class Board:
         self, from_before: "Square", to_before: "Square",
         from_after: "Square", to_after: "Square", is_en_passant: bool,
         is_promotion: bool, is_castling: bool, is_check: bool = False,
-        is_checkmate: bool = False
+        is_checkmate: bool = False, src_string: str = None
     ) -> None:
         """Adds a move to the list of moves in the game."""
+        if src_string is not None:
+            # Record algebraic notation of move.
+            if is_castling:
+                kingside = to_before.file == 6
+                algebraic_notation = "O-O" if kingside else "O-O-O"
+                long_algebraic_notation = algebraic_notation
+            else:
+                piece_letter = PIECE_LETTERS.get(
+                    from_before.piece.type, "")
+
+                src_square = from_before
+                dest_square = to_before
+                is_capture = not dest_square.empty or is_en_passant
+                
+                dest_file = FILE_STRING[dest_square.file]
+                dest_rank = dest_square.rank + 1
+
+                capture_char = "x" if is_capture else ""
+
+                if is_promotion:
+                    promotion_piece_letter = PIECE_LETTERS.get(
+                        to_after.piece.type)
+                    promotion_string = f"={promotion_piece_letter}"
+                else:
+                    promotion_string = ""
+                algebraic_notation = (
+                    f"{piece_letter}{src_string}{capture_char}"
+                    f"{dest_file}{dest_rank}{promotion_string}")
+                long_algebraic_notation = (
+                    f"{piece_letter}{FILE_STRING[src_square.file]}"
+                    f"{src_square.rank + 1}{capture_char}"
+                    f"{dest_file}{dest_rank}{promotion_string}")
+            if is_check:
+                algebraic_notation += "+"
+                long_algebraic_notation += "+"
+            if is_checkmate:
+                algebraic_notation += "#"
+                long_algebraic_notation += "#"
+        else:
+            algebraic_notation = None
+            long_algebraic_notation = None
         move = Move(
             from_before, to_before, from_after, to_after,
             is_castling, is_en_passant, is_promotion,
-            is_check, is_checkmate)
+            is_check, is_checkmate, algebraic_notation,
+            long_algebraic_notation)
         self.moves.append(move)
     
     def add_capture(self, piece: Piece) -> None:
@@ -683,6 +728,47 @@ class Board:
                 continue
             points = PIECE_POINTS.get(square.piece.type, 0)
             self.piece_points[square.piece.colour] += points
+
+    def get_source_square_notation(
+        self, src_square: "Square", dest_square: "Square",
+        is_capture: bool
+    ) -> str:
+        """
+        Returns the most concise source square notation without ambiguity.
+        - Ideally does not need to be explicitly stated.
+        - File preferred next if unambiguous.
+        - Rank preferred next if unambiguous.
+        - File and rank last resort (full square).
+        """
+        src_piece = src_square.piece
+        unique_file = True
+        unique_rank = True
+        # Another piece on a different file AND rank.
+        other_square = False
+        for square in self:
+            if square == src_square or square.empty:
+                continue
+            piece = square.piece
+            if piece.type != src_piece.type or piece not in self.current_moves:
+                continue
+            if dest_square in self.current_moves[piece]:
+                if square.file == src_square.file:
+                    unique_file = False
+                elif square.rank == src_square.rank:
+                    unique_rank = False
+                else:
+                    other_square = True
+                if (not unique_file) and (not unique_rank):
+                    return (
+                        f"{FILE_STRING[src_square.file]}{src_square.rank + 1}")
+        # Pawn captures must always have the file stated.
+        if src_piece.type == Pieces.PAWN and is_capture:
+            return FILE_STRING[src_square.file]
+        if unique_file and unique_rank and not other_square:
+            return ""
+        if unique_file:
+            return FILE_STRING[src_square.file]
+        return str(src_square.rank + 1)
 
 
 class Square:
