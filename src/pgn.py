@@ -62,6 +62,7 @@ class PGNGenerator(tk.Tk):
         self.title(f"{TITLE} - Save PGN")
         self.tk_setPalette(foreground=PGN_FG, background=BACKGROUND_COLOUR)
         self.resizable(False, False)
+        self.iconbitmap(ICON)
         self.board = board
         self.confirmed_overwrite = False
         

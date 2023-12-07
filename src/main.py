@@ -16,6 +16,7 @@ class Game:
 
     def __init__(self) -> None:
         self.window = pg.display.set_mode((WIDTH, HEIGHT))
+        pg.display.set_icon(pg.image.load(ICON))
         self.clock = pg.time.Clock()
         # Persistent home screen - allow same settings to be
         # seen whenever returning to the home screen.

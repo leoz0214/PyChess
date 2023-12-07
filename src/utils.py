@@ -38,7 +38,6 @@ PIECE_POINTS = {
     Pieces.QUEEN: 9
 }
 
-
 PIECE_LETTERS = {
     Pieces.KNIGHT: "N",
     Pieces.BISHOP: "B",
@@ -48,7 +47,6 @@ PIECE_LETTERS = {
 }
 
 FILE_STRING = "abcdefgh"
-
 
 OUTCOME_STRINGS = {
     Colour.WHITE: "1-0",

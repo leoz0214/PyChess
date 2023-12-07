@@ -128,9 +128,11 @@ DARK_GREY = "#777777"
 GAME_DIR = pathlib.Path(__file__).parent.parent
 FONT_DIR = GAME_DIR / "font"
 INTER_FONT = FONT_DIR / "Inter.ttf"
-PIECES_DIR = GAME_DIR / "pieces"
+IMAGES_DIR = GAME_DIR / "images"
+PIECES_DIR = IMAGES_DIR / "pieces"
 WHITE_PIECES_DIR = PIECES_DIR / "white"
 BLACK_PIECES_DIR = PIECES_DIR / "black"
+ICON = IMAGES_DIR / "icon.ico"
 
 AUDIO_DIR = GAME_DIR / "audio"
 # Sounds effects from chess.com.

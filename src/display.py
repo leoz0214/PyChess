@@ -520,8 +520,8 @@ class PromotionMenu(pg.Rect):
         # Pairs of pieces and their TOP LEFT CORNER co-ordinate.
         self.pieces = [
             (piece(colour, True), (
-                self.centerx + PIECE_WIDTH * (i - 2), self.top + 50))
-            for i, piece in enumerate((Queen, Rook, Bishop, Knight))]
+                self.centerx + PIECE_WIDTH * i + 10 * (i + 0.5), self.top + 50))
+            for i, piece in enumerate((Queen, Rook, Bishop, Knight), -2)]
         self.selection = None
         self.closed = False
         self.close_x = render_text("x", 30, GREY)
@@ -592,6 +592,9 @@ class PlayerInfo(pg.Rect):
         self.resign_text = render_text("Resign", 15, self.fg)
         self.resign_coordinates = (
             self.min_x + self.width // 2, self.min_y + self.height - 15)
+
+        self.outcome_coordinates = (
+            self.min_x + self.width // 2, self.min_y + self.height - 25)
     
     def get_time_display(self, seconds: float) -> str:
         """Returns the time display based on the number of seconds."""
@@ -630,6 +633,12 @@ class PlayerInfo(pg.Rect):
                 self.draw_text = self.accept_draw_text
                 self.game.display_rendered_text(
                     self.draw_text, *self.draw_coordinates)
+            return
+        outcome_text = (
+            "Win" if board.winner == self.colour
+            else "Draw" if board.winner is None else "Loss")
+        self.game.display_text(
+            outcome_text, *self.outcome_coordinates, self.fg, 25)
     
     def handle_click(
         self, coordinates: tuple[int, int], board: DisplayBoard
