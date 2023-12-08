@@ -33,8 +33,8 @@ class Move:
     check: bool = False
     checkmate: bool = False
     # Algebraic notations (for PGN saving).
-    algebraic_notation: str = None
-    long_algebraic_notation: str = None
+    algebraic_notation: str | None = None
+    long_algebraic_notation: str | None = None
 
 
 @dataclass
@@ -46,7 +46,7 @@ class _MoveData:
 
 
 class Board:
-    """Internal Chess board representation."""
+    """Internal Chess board representation and functionality."""
 
     def __init__(self) -> None:
         back_rank = (Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook)
@@ -63,11 +63,13 @@ class Board:
                 Square(file, 0, piece(Colour.WHITE))
                 for file, piece in enumerate(back_rank)]
         ]
+        # The colour of the current player to move.
         self.turn = Colour.WHITE
         # Performing a test move at the moment.
         self.test_move = False
         # Moves which have been played by both colours.
         self.moves = []
+        # Piece type to move method mapping.
         self.move_methods = {
             Pieces.PAWN: self.get_pawn_moves,
             Pieces.KNIGHT: self.get_knight_moves,
@@ -115,8 +117,7 @@ class Board:
         possible_next_squares = self.get_all_moves()
         self.test_move = False
         king_square = self.get_king_square(opponent=True)
-        king_attacked = king_square in possible_next_squares
-        if not king_attacked:
+        if king_square not in possible_next_squares:
             return None
         self.invert_turn()
         is_checkmate = not self.get_all_moves()
@@ -163,15 +164,12 @@ class Board:
                 algebraic_notation = "O-O" if kingside else "O-O-O"
                 long_algebraic_notation = algebraic_notation
             else:
-                piece_letter = PIECE_LETTERS.get(
-                    from_before.piece.type, "")
+                piece_letter = PIECE_LETTERS.get(from_before.piece.type, "")
 
-                src_square = from_before
-                dest_square = to_before
-                is_capture = not dest_square.empty or is_en_passant
+                is_capture = not to_before.empty or is_en_passant
                 
-                dest_file = FILE_STRING[dest_square.file]
-                dest_rank = dest_square.rank + 1
+                dest_file = FILE_STRING[to_before.file]
+                dest_rank = to_before.rank + 1
 
                 capture_char = "x" if is_capture else ""
 
@@ -185,8 +183,8 @@ class Board:
                     f"{piece_letter}{src_string}{capture_char}"
                     f"{dest_file}{dest_rank}{promotion_string}")
                 long_algebraic_notation = (
-                    f"{piece_letter}{FILE_STRING[src_square.file]}"
-                    f"{src_square.rank + 1}{capture_char}"
+                    f"{piece_letter}{FILE_STRING[from_before.file]}"
+                    f"{from_before.rank + 1}{capture_char}"
                     f"{dest_file}{dest_rank}{promotion_string}")
             if is_check:
                 algebraic_notation += "+"
@@ -195,6 +193,7 @@ class Board:
                 algebraic_notation += "#"
                 long_algebraic_notation += "#"
         else:
+            # Algebraic notation is irrelevant for the use case.
             algebraic_notation = None
             long_algebraic_notation = None
         move = Move(
@@ -206,6 +205,7 @@ class Board:
     
     def add_capture(self, piece: Piece) -> None:
         """Registers a piece to have been captured."""
+        # Consider a promoted piece a pawn capture.
         piece_type = piece.type if not piece.promoted else Pieces.PAWN
         self.captured[piece.colour][piece_type] += 1
     
@@ -284,9 +284,9 @@ class Board:
         self, square: "Square", move: "Square", validate: bool = True
     ) -> bool:
         """Check if a move is a valid castling move."""
-        if not (
-            square.piece.type == Pieces.KING
-            and abs(move.file - square.file) == 2
+        if (
+            square.piece.type != Pieces.KING
+            or abs(move.file - square.file) != 2
         ):
             return False
         if not validate:
@@ -390,11 +390,11 @@ class Board:
     def is_insufficient_material(self) -> bool:
         """
         Performs a basic check to see if there is no possible checkmate.
-        Combinations with insufficient material to checkmate include:
+        Combinations with insufficient material for checkmate include:
         - King vs King
         - King and bishop vs king
         - King and knight vs king
-        - King and bishop vs king and bishop, bishops on the same colour.
+        - King and bishop vs king and bishop, bishops are the same colour.
         """
         counts = {}
         bishop_squares = dict.fromkeys((Colour.WHITE, Colour.BLACK), None)
@@ -548,7 +548,8 @@ class Board:
                 for promotion_piece in promotion_pieces:
                     move_data = self._make_move(square, move, promotion_piece)
                     self.invert_turn()
-                    # Checks move does not trigger 5-fold repetition or 75 move rule.
+                    # Checks move does not trigger
+                    # 5-fold repetition or 75 move rule.
                     if not (
                         self.is_nfold_repetition(5) or self.is_nmove_rule(75)
                     ):
@@ -564,6 +565,7 @@ class Board:
                             for move_ in moves_:
                                 move_data_ = self._make_move(square_, move_)
                                 if self.checkmate_square is not None:
+                                    # Checkmate found! Not insufficient.
                                     insuffient = False
                                 self._undo_move(square_, move_, move_data_)
                                 if not insuffient:
@@ -746,21 +748,23 @@ class Board:
         # Another piece on a different file AND rank.
         other_square = False
         for square in self:
-            if square == src_square or square.empty:
-                continue
             piece = square.piece
-            if piece.type != src_piece.type or piece not in self.current_moves:
+            if (
+                square == src_square
+                or square.empty
+                or piece.type != src_piece.type
+                or piece not in self.current_moves
+                or dest_square not in self.current_moves[piece]
+            ):
                 continue
-            if dest_square in self.current_moves[piece]:
-                if square.file == src_square.file:
-                    unique_file = False
-                elif square.rank == src_square.rank:
-                    unique_rank = False
-                else:
-                    other_square = True
-                if (not unique_file) and (not unique_rank):
-                    return (
-                        f"{FILE_STRING[src_square.file]}{src_square.rank + 1}")
+            if square.file == src_square.file:
+                unique_file = False
+            elif square.rank == src_square.rank:
+                unique_rank = False
+            else:
+                other_square = True
+            if (not unique_file) and (not unique_rank):
+                return f"{FILE_STRING[src_square.file]}{src_square.rank + 1}"
         # Pawn captures must always have the file stated.
         if src_piece.type == Pieces.PAWN and is_capture:
             return FILE_STRING[src_square.file]

@@ -30,6 +30,8 @@ class Action(enum.Enum):
     HOME = "home"
 
 
+# Agreed values of each piece in terms of 'points'.
+# The more points, the more valuable (powerful) a piece.
 PIECE_POINTS = {
     Pieces.PAWN: 1,
     Pieces.KNIGHT: 3,
@@ -38,6 +40,7 @@ PIECE_POINTS = {
     Pieces.QUEEN: 9
 }
 
+# Algebraic notation piece letters.
 PIECE_LETTERS = {
     Pieces.KNIGHT: "N",
     Pieces.BISHOP: "B",
@@ -46,6 +49,7 @@ PIECE_LETTERS = {
     Pieces.KING: "K"
 }
 
+# Files a - h
 FILE_STRING = "abcdefgh"
 
 OUTCOME_STRINGS = {

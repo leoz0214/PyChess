@@ -49,11 +49,13 @@ class DisplayBoard:
                     for colour, file in zip(colour_cycle, range(FILES))])
         
         self.selected_square = None
+        # Dragging handling.
         self.initial_coordinates = None
         self.drag_coordinates = None
         self.drag_image = None
         self.confirm_deselect = False
-    
+
+        # Game moves/outcomes handling.
         self.result = None
         self.winner = None
         self.promotion = None
@@ -63,6 +65,7 @@ class DisplayBoard:
         self.can_claim_draw = False
         self.accept_draw_active = False
 
+        # Time control handling.
         self.time_left = dict.fromkeys(
             (Colour.WHITE, Colour.BLACK), self.settings.seconds)
         self.last_timestamp = timer()
@@ -130,11 +133,11 @@ class DisplayBoard:
         if self.promotion is not None:
             if not self.promotion.closed:
                 self.promotion.handle_click(coordinates)
-            if self.promotion.closed:
-                if self.promotion.selection is not None:
-                    self.make_move(
-                        self.promotion.square, self.promotion.selection)
-                self.promotion = None
+                if self.promotion.closed:
+                    if self.promotion.selection is not None:
+                        self.make_move(
+                            self.promotion.square, self.promotion.selection)
+                    self.promotion = None
             return
         selected_square = self.get_square(coordinates)
         if selected_square is None:
@@ -249,7 +252,7 @@ class DisplayBoard:
             new_rook_square.piece = rook_square.piece
             rook_square.piece = None
 
-        if (not to_before.empty) and to_before.piece.colour != self.board.turn:
+        if not to_before.empty:
             self.board.add_capture(to_before.piece)
 
         self.selected_square.piece = None
@@ -280,8 +283,8 @@ class DisplayBoard:
             src_string=source_square_notation)
         self.board.set_moves()
         if self.board.is_nfold_repetition(5):
-            # Automatic draw upon 5 repetitions.
-            self.end("Fivefold Repetition", f"{TITLE} - Fivefold Repetition")    
+            # Automatic draw upon 5 repetitions of the exact same position.
+            self.end("Fivefold Repetition", f"{TITLE} - Fivefold Repetition")
             return
         if self.board.is_nmove_rule(75):
             # 75 Move Rule automatic draw.
@@ -295,20 +298,13 @@ class DisplayBoard:
         if not any(moves for moves in self.board.current_moves.values()):
             # Not checkmate, but no legal moves i.e. stalemate.
             self.end("Stalemate", f"{TITLE} - Stalemate")
-            for square in self.board:
-                if (
-                    (not square.empty) and square.piece.type == Pieces.KING
-                    and square.piece.colour == self.board.turn
-                ):
-                    self.stalemate_square = square
-                    return
+            self.stalemate_square = self.board.get_king_square()
         pg.display.set_caption(
             f"{TITLE} - {('White', 'Black')[self.board.turn.value]} to play")
         move_sfx = (
-            CHECK_SFX if is_check
-            else CASTLING_SFX if is_castling
-            else PROMOTION_SFX if is_promotion
-            else CAPTURE_SFX if is_capture else MOVE_SFX)
+            CHECK_SFX if is_check else CASTLING_SFX if is_castling
+            else PROMOTION_SFX if is_promotion else CAPTURE_SFX if is_capture
+            else MOVE_SFX)
         move_sfx.play()
         # Updates the can claim draw state. An optional draw is allowed
         # if 3 fold repetition or 50 move rule is reached.
@@ -388,8 +384,8 @@ class DisplayBoard:
         event name and player names (optional).
         """
         # Open Tkinter PGN generator window, focuses on it preventing
-        # actions to the game itself until closed. Once closed,
-        # the control returns to pygame.
+        # actions to the game itself until closed.
+        # Once closed, the control returns to pygame.
         pgn_window = pgn.PGNGenerator(self)
         pgn_window.mainloop()
 
@@ -462,6 +458,8 @@ class DisplayResult(pg.Rect):
         self.height = height
         self.left = self.board.min_x + (self.board.width - self.width) // 2
         self.top = self.board.min_y + (self.board.height - self.height) // 2
+        super().__init__(self.left, self.top, self.width, self.height)
+
         if isinstance(outcome, Colour):
             outcome_text = (
                 "Resignation" if resignation
@@ -476,9 +474,8 @@ class DisplayResult(pg.Rect):
         }.get(outcome, ("Draw", GREY))
         self.info_textbox = render_text(info_text, 30, colour)
         self.close_x = render_text("x", 30, GREY)
-        self.close_x_coordinates = (self.left + self.width - 20, self.top + 20)
+        self.close_x_coordinates = (self.right - 20, self.top + 20)
         self.closed = False
-        super().__init__(self.left, self.top, self.width, self.height)
 
     def display(self) -> None:
         """Displays the outcome."""
@@ -525,7 +522,7 @@ class PromotionMenu(pg.Rect):
         self.selection = None
         self.closed = False
         self.close_x = render_text("x", 30, GREY)
-        self.close_x_coordinates = (self.left + self.width - 20, self.top + 20)
+        self.close_x_coordinates = (self.right - 20, self.top + 20)
     
     def display(self) -> None:
         """Displays the promotion menu."""
@@ -563,38 +560,31 @@ class PlayerInfo(pg.Rect):
     ) -> None:
         self.game = game
         self.colour = colour
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
         self.fg = text_colour
-        super().__init__(self.min_x, self.min_y, width, height)
+        super().__init__(min_x, min_y, width, height)
 
         self.title = render_text(
             ("White", "Black")[self.colour.value], 35, self.fg)
-        self.title_coordinates = (
-            self.min_x + self.width // 2, self.min_y + 35)
+        self.title_coordinates = (self.centerx, self.top + 35)
 
         self.captured_pieces_info = CapturedPiecesDisplay(
             self.game, self.colour,
-            self.min_x + self.width // 2 - CAPTURED_PIECES_WIDTH // 2,
-            self.min_y + 60, CAPTURED_PIECES_WIDTH, CAPTURED_PIECES_HEIGHT)
+            self.centerx - CAPTURED_PIECES_WIDTH // 2,
+            self.top + 60, CAPTURED_PIECES_WIDTH, CAPTURED_PIECES_HEIGHT)
 
-        self.time_coordinates = (
-            self.min_x + self.width // 2, self.min_y + 225)
+        self.time_coordinates = (self.centerx, self.top + 225)
 
         self.request_draw_text = render_text("Request Draw", 15, self.fg)
         self.claim_draw_text = render_text("Claim Draw", 15, self.fg)
         self.accept_draw_text = render_text("Accept Draw", 15, self.fg)
         self.draw_text = None
-        self.draw_coordinates = (
-            self.min_x + self.width // 2, self.min_y + self.height - 45)
+        self.draw_coordinates = (self.centerx, self.bottom - 45)
         self.resign_text = render_text("Resign", 15, self.fg)
-        self.resign_coordinates = (
-            self.min_x + self.width // 2, self.min_y + self.height - 15)
+        self.resign_coordinates = (self.centerx, self.bottom - 15)
 
-        self.outcome_coordinates = (
-            self.min_x + self.width // 2, self.min_y + self.height - 25)
+        self.outcome_coordinates = (self.centerx, self.bottom - 25)
     
     def get_time_display(self, seconds: float) -> str:
         """Returns the time display based on the number of seconds."""
@@ -672,20 +662,17 @@ class GameOptions(pg.Rect):
     ) -> None:
         self.game = game
         self.board = board
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
-        super().__init__(self.min_x, self.min_y, self.width, self.height)
+        super().__init__(min_x, min_y, self.width, self.height)
     
         self.restart_text = render_text("Restart", 25, DARK_GREY)
         self.replay_text = render_text("Replay", 25, DARK_GREY)
-        self.restart_coordinates = (
-            self.min_x + 50, self.centery)
+        self.restart_coordinates = (self.left + 50, self.centery)
         
         self.home_text = render_text("Home", 25, DARK_GREY)
         self.home_coordinates = (self.centerx, self.centery)
-        self.home_end_coordinates = (self.min_x + 175, self.centery)
+        self.home_end_coordinates = (self.left + 175, self.centery)
 
         self.save_pgn_text = render_text("Save PGN", 25, DARK_GREY)
         self.save_pgn_coordinates = (self.right - 175, self.centery)
@@ -751,8 +738,6 @@ class CapturedPiecesDisplay(pg.Rect):
         self.game = game
         self.colour = colour
         self.opponent = (Colour.WHITE, Colour.BLACK)[not colour.value]
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
         self.images = {
@@ -760,7 +745,7 @@ class CapturedPiecesDisplay(pg.Rect):
             for piece in (Pieces.PAWN, Pieces.KNIGHT,
                 Pieces.BISHOP, Pieces.ROOK, Pieces.QUEEN)
         }
-        super().__init__(self.min_x, self.min_y, width, height)
+        super().__init__(min_x, min_y, width, height)
 
     def display(self, board: Board) -> None:
         """Displays the result."""
@@ -770,8 +755,8 @@ class CapturedPiecesDisplay(pg.Rect):
             for _ in range(count):
                 row, column = divmod(pieces, CAPTURED_PIECES_PER_ROW)
                 coordinates = (
-                    self.min_x + column * overall_piece_width,
-                    self.min_y + row * SMALL_PIECE_WIDTH)
+                    self.left + column * overall_piece_width,
+                    self.top + row * SMALL_PIECE_WIDTH)
                 self.game.window.blit(self.images[piece_type], coordinates)
                 pieces += 1
         piece_points = board.piece_points
@@ -779,7 +764,7 @@ class CapturedPiecesDisplay(pg.Rect):
         if points_ahead > 0:
             row, column = divmod(pieces, CAPTURED_PIECES_PER_ROW)
             coordinates = (
-                self.min_x + column * overall_piece_width + 5,
-                self.min_y + row * SMALL_PIECE_WIDTH)
+                self.left + column * overall_piece_width + 5,
+                self.top + row * SMALL_PIECE_WIDTH)
             self.game.display_text(
                 f"+{points_ahead}", *coordinates, DARK_GREY, 17, centre=False)

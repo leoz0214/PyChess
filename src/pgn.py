@@ -116,21 +116,16 @@ class PGNGenerator(tk.Tk):
     def get_tag_pairs_string(self) -> str:
         """Returns the tag pairs string based on game info and user input."""
         tag_pairs = {}
-        event = self.entries["event"].value
-        if event:
+        if (event := self.entries["event"].value):
             tag_pairs["Event"] = event
-        site = self.entries["site"].value
-        if site:
+        if (site := self.entries["site"].value):
             tag_pairs["Site"] = site
         tag_pairs["Date"] = self.board.date_started.strftime("%Y.%m.%d")
-        round_ = self.entries["round"].value
-        if round_:
+        if (round_ := self.entries["round"].value):
             tag_pairs["Round"] = round_
-        white = self.entries["white"].value
-        if white:
+        if (white := self.entries["white"].value):
             tag_pairs["White"] = white
-        black = self.entries["black"].value
-        if black:
+        if (black := self.entries["black"].value):
             tag_pairs["Black"] = black
         tag_pairs["Result"] = OUTCOME_STRINGS[self.board.winner]
         return "\n".join(
@@ -140,9 +135,9 @@ class PGNGenerator(tk.Tk):
         """Returns the algebraic notation for the moves played."""
         moves = self.board.board.moves
         is_long = self.algebraic_notation_type.is_long
+        attribute = f"{'long_' if is_long else ''}algebraic_notation"
         algebraic_notation_pairs = [
-            [move.long_algebraic_notation if is_long else
-                move.algebraic_notation for move in moves[i:i+2]]
+            [getattr(move, attribute) for move in moves[i:i+2]]
             for i in range(0, len(moves), 2)]
         return " ".join(
             f"{n}. {' '.join(pair)}"

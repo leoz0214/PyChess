@@ -2,6 +2,7 @@
 import sys
 
 import pygame as pg
+pg.init()
 pg.font.init()
 pg.mixer.init()
 
@@ -63,8 +64,8 @@ class Game:
             self, Colour.BLACK, BLACK_MIN_X, BLACK_MIN_Y,
             PLAYER_INFO_WIDTH, PLAYER_INFO_HEIGHT, PLAYER_INFO_FG)
         game_options = display.GameOptions(
-            self, board, GAME_END_MIN_X, GAME_END_MIN_Y,
-            GAME_END_WIDTH, GAME_END_HEIGHT)
+            self, board, GAME_OPTIONS_MIN_X, GAME_OPTIONS_MIN_Y,
+            GAME_OPTIONS_WIDTH, GAME_OPTIONS_HEIGHT)
         START_SFX.play()
         while True:
             self.clock.tick(FPS)
@@ -141,7 +142,6 @@ class Game:
 
 
 if __name__ == "__main__":
-    pg.init()
     game = Game()
     # Allows home screen to be accessed indefinitely.
     while True:

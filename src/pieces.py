@@ -3,6 +3,7 @@ Handles the chess pieces, including
 pawns, knights, bishops, rooks, queens and kings.
 """
 import io
+
 import pygame as pg
 from PIL import Image
 

@@ -32,7 +32,7 @@ class Home(pg.Rect):
         super().__init__(0, 0, self.width, self.height)
 
         self.title = render_text("Chess", 75, self.fg)
-        self.title_coordinates = (self.width // 2, 100)
+        self.title_coordinates = (self.centerx, 100)
 
         self.time_controls = TimeControlSetting(
             self.game, self, TIME_CONTROLS_MIN_X, TIME_CONTROLS_MIN_Y,
@@ -43,7 +43,7 @@ class Home(pg.Rect):
             SETTINGS_WIDTH, SETTINGS_HEIGHT)
 
         self.start = render_text("Start", 50, self.fg)
-        self.start_coordinates = (self.width // 2, 500)
+        self.start_coordinates = (self.centerx, 500)
         self.started = False
     
     def display(self) -> None:
@@ -83,14 +83,12 @@ class TimeControl(pg.Rect):
         self.game = game
         self.seconds = seconds
         self.added_seconds = added_seconds
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
-        super().__init__(self.min_x, self.min_y, self.width, self.height)
+        super().__init__(min_x, min_y, self.width, self.height)
 
         self.text = render_text(display, 20, fg)
-        self.text_coordinates = (self.min_x + 10, self.min_y)
+        self.text_coordinates = (self.left + 10, self.top)
     
     def display(self, bg: str) -> None:
         """Displays the time control."""
@@ -113,15 +111,13 @@ class TimeControlSetting(pg.Rect):
     ) -> None:
         self.game = game
         self.home = home
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
         self.selected_colour = selected_colour
-        super().__init__(self.min_x, self.min_y, self.width, self.height)
+        super().__init__(min_x, min_y, self.width, self.height)
 
         self.title = render_text("Time Control", 25, self.home.fg)
-        self.title_coordinates = (self.min_x + 25, self.min_y + 25)
+        self.title_coordinates = (self.left + 25, self.top + 25)
 
         self.time_controls = []
         for n, ((seconds, added_seconds), display) in enumerate(
@@ -129,8 +125,8 @@ class TimeControlSetting(pg.Rect):
         ):
             row, column = divmod(n, TIME_CONTROLS_PER_ROW)
             top_left_coordinates = (
-                self.min_x + 25 + column * TIME_CONTROL_WIDTH,
-                self.min_y + 75 + row * TIME_CONTROL_HEIGHT)
+                self.left + 25 + column * TIME_CONTROL_WIDTH,
+                self.top + 75 + row * TIME_CONTROL_HEIGHT)
             time_control = TimeControl(
                 self.game, seconds, added_seconds, display,
                 *top_left_coordinates, TIME_CONTROL_WIDTH, TIME_CONTROL_HEIGHT,
@@ -168,20 +164,18 @@ class Setting(pg.Rect):
         selected_colour: str, on: bool = False
     ) -> None:
         self.game = game
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
         self.selected_colour = selected_colour
         self.on = on
-        super().__init__(self.min_x, self.min_y, self.width, self.height)
+        super().__init__(min_x, min_y, self.width, self.height)
 
         self.text = render_text(display, 20, fg)
-        self.text_coordinates = (self.min_x, self.min_y)
+        self.text_coordinates = (self.left, self.top)
         self.on_text = render_text("ON", 20, fg)
-        self.on_coordinates = (self.right - 80, self.min_y)
+        self.on_coordinates = (self.right - 80, self.top)
         self.off_text = render_text("OFF", 20, fg)
-        self.off_coordinates = (self.right - 40, self.min_y)
+        self.off_coordinates = (self.right - 40, self.top)
 
     def display(self) -> None:
         """Displays the setting."""
@@ -208,7 +202,7 @@ class Setting(pg.Rect):
             self.on_text, *self.on_coordinates, coordinates, center=False
         ):
             self.on = True
-        if surface_clicked(
+        elif surface_clicked(
             self.off_text, *self.off_coordinates, coordinates, center=False
         ):
             self.on = False
@@ -226,19 +220,17 @@ class SettingsBox(pg.Rect):
     ) -> None:
         self.game = game
         self.home = home
-        self.min_x = min_x
-        self.min_y = min_y
         self.width = width
         self.height = height
-        super().__init__(self.min_x, self.min_y, self.width, self.height)
+        super().__init__(min_x, min_y, self.width, self.height)
 
         self.title = render_text("Additional Settings", 25, self.home.fg)
-        self.title_coordinates = (self.min_x + 25, self.min_y + 25)
+        self.title_coordinates = (self.left + 25, self.top + 25)
 
         self.settings = {
             name: Setting(
-                self.game, display, self.min_x + 25,
-                self.min_y + 75 + n * SETTING_WIDTH, SETTING_WIDTH,
+                self.game, display, self.left + 25,
+                self.top + 75 + n * SETTING_WIDTH, SETTING_WIDTH,
                 SETTING_HEIGHT, self.home.fg, SELECTED_SETTING_COLOUR, on)
             for n, (name, (display, on)) in enumerate(SETTINGS.items())
         }

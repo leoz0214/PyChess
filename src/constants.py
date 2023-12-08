@@ -17,7 +17,8 @@ TIME_CONTROLS_MIN_Y = 150
 TIME_CONTROLS_WIDTH = 600
 TIME_CONTROLS_HEIGHT = 150
 SELECTED_TIME_CONTROL_COLOUR = "#03a9fc"
-# Format: (seconds, added seconds / move): display
+
+# Fixed time controls. Format: (seconds, added seconds / move): display
 TIME_CONTROLS = {
     (float("inf"), 0): "None",
     (30, 0): "30 sec",
@@ -39,6 +40,7 @@ TIME_CONTROL_WIDTH = 85
 TIME_CONTROL_HEIGHT = 27
 TIME_CONTROLS_PER_ROW = 5
 
+# Game settings section.
 SETTINGS_MIN_X = 200
 SETTINGS_MIN_Y = 325
 SETTINGS_WIDTH = 600
@@ -62,22 +64,28 @@ LIGHT_SQUARE_COLOUR = "#e6ddc3"
 PIECE_WIDTH = 55
 SELECTED_SQUARE_COLOUR = "#03a9fc"
 
+# The circle that appears on a square which can be moved to.
 POSSIBLE_MOVE_CIRCLE_WIDTH = 10
 POSSIBLE_MOVE_CIRCLE_COLOUR = "#888888"
 
 BACKGROUND_COLOUR = "#8fc4cf"
 
+# Board top-level coordinates
 BOARD_MIN_X = 260
 BOARD_MIN_Y = 50
 
+# Result popup config.
 RESULT_COLOUR = "#03a9fc"
 RESULT_WIDTH = 300
 RESULT_HEIGHT = 200
 
+# Promotion menu popup config.
 PROMOTION_COLOUR = "#03a9fc"
 PROMOTION_WIDTH = 300
 PROMOTION_HEIGHT = 125
 
+# The possible outcome texts and the corresponding font sizes.
+# Obviously, the longer the text, the smaller the font.
 OUTCOME_TEXT_SIZES = {
     "Checkmate": 50,
     "Stalemate": 50,
@@ -92,8 +100,10 @@ OUTCOME_TEXT_SIZES = {
     "Timeout vs Insufficient Material": 20
 }
 
+# How many pixels of mouse drag can be ignored.
 INSIGNIFICANT_DRAG_RADIUS = 5
 
+# Colour info display config.
 WHITE_MIN_X = 30
 WHITE_MIN_Y = 50
 
@@ -104,11 +114,13 @@ PLAYER_INFO_WIDTH = 200
 PLAYER_INFO_HEIGHT = 450
 PLAYER_INFO_FG = "#777777"
 
-GAME_END_MIN_X = 260
-GAME_END_MIN_Y = 540
-GAME_END_WIDTH = 480
-GAME_END_HEIGHT = 50
+# Game options bottom menu config.
+GAME_OPTIONS_MIN_X = 260
+GAME_OPTIONS_MIN_Y = 540
+GAME_OPTIONS_WIDTH = 480
+GAME_OPTIONS_HEIGHT = 50
 
+# Captured pieces display.
 CAPTURED_PIECES_PER_ROW = 8
 CAPTURED_PIECES_WIDTH = 175
 CAPTURED_PIECES_HEIGHT = 50
@@ -126,8 +138,12 @@ DARK_GREY = "#777777"
 
 # Directories and files.
 GAME_DIR = pathlib.Path(__file__).parent.parent
+
+# Game font
 FONT_DIR = GAME_DIR / "font"
 INTER_FONT = FONT_DIR / "Inter.ttf"
+
+# Image handling including pieces.
 IMAGES_DIR = GAME_DIR / "images"
 PIECES_DIR = IMAGES_DIR / "pieces"
 WHITE_PIECES_DIR = PIECES_DIR / "white"
