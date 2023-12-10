@@ -141,8 +141,13 @@ class Game:
         self.window.blit(textbox, (left, top))
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Main procedure of the program."""
     game = Game()
     # Allows home screen to be accessed indefinitely.
     while True:
         game.home()
+
+
+if __name__ == "__main__":
+    main()

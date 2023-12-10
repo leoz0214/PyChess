@@ -1,5 +1,6 @@
 """Constants to be used throughout the program. Improves maintainability."""
 import pathlib
+import sys
 
 import pygame as pg
 
@@ -137,7 +138,12 @@ GREY = "grey"
 DARK_GREY = "#777777"
 
 # Directories and files.
-GAME_DIR = pathlib.Path(__file__).parent.parent
+if hasattr(sys, "_MEIPASS"):
+    # From executable.
+    GAME_DIR = pathlib.Path(sys._MEIPASS)
+else:
+    # From Python.
+    GAME_DIR = pathlib.Path(__file__).parent.parent
 
 # Game font
 FONT_DIR = GAME_DIR / "font"
